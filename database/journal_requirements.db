@@ -1,0 +1,632 @@
+{
+  "journals": {
+    "Nature": {
+      "type": "journal",
+      "category": "international",
+      "word_limits": {
+        "abstract": 150,
+        "main_text": 3000,
+        "methods": 1500,
+        "total": 4500
+      },
+      "language": "British English",
+      "citation_style": "Nature format",
+      "structure_requirements": {
+        "title": {
+          "max_characters": 90,
+          "notes": "Should be accessible to broad readership"
+        },
+        "abstract": {
+          "max_words": 150,
+          "structure": "Background, Methods, Results, Conclusions",
+          "notes": "No references in abstract"
+        },
+        "sections": [
+          "Introduction",
+          "Results", 
+          "Discussion",
+          "Methods",
+          "Acknowledgements",
+          "References"
+        ]
+      },
+      "formatting_rules": {
+        "font": "Times New Roman, 12pt",
+        "spacing": "Double spaced",
+        "margins": "2.5cm all sides",
+        "figures": "300 DPI minimum",
+        "line_numbers": "required"
+      },
+      "style_guidelines": {
+        "tense": {
+          "methods": "past tense",
+          "results": "past tense", 
+          "established_facts": "present tense"
+        },
+        "voice": "active voice preferred",
+        "person": "avoid first person (we, our)",
+        "spelling": "British (colour, realise, centre)",
+        "numbers": "spell out one to nine, use numerals for 10+"
+      },
+      "special_requirements": [
+        "Significance statement required",
+        "Data availability statement",
+        "Author contributions section",
+        "Competing interests declaration"
+      ]
+    },
+
+    "Science": {
+      "type": "journal", 
+      "category": "international",
+      "word_limits": {
+        "abstract": 125,
+        "main_text": 2500,
+        "total": 3500
+      },
+      "language": "American English",
+      "citation_style": "Science format",
+      "structure_requirements": {
+        "title": {
+          "max_words": 15,
+          "notes": "Concise and impactful"
+        },
+        "abstract": {
+          "max_words": 125,
+          "structure": "One paragraph, structured summary"
+        },
+        "sections": [
+          "One-sentence summary",
+          "Abstract",
+          "Main text",
+          "Materials and Methods", 
+          "References and Notes"
+        ]
+      },
+      "formatting_rules": {
+        "font": "Times New Roman, 12pt",
+        "spacing": "Double spaced",
+        "margins": "2.5cm all sides",
+        "references": "numbered sequentially"
+      },
+      "style_guidelines": {
+        "tense": "past tense for experimental work",
+        "voice": "active voice",
+        "person": "third person preferred",
+        "spelling": "American (color, realize, center)",
+        "emphasis": "broader significance emphasized"
+      },
+      "special_requirements": [
+        "One-sentence summary (max 125 characters)",
+        "Data and materials availability",
+        "Supplementary materials section"
+      ]
+    },
+
+    "Cell": {
+      "type": "journal",
+      "category": "international", 
+      "word_limits": {
+        "abstract": 150,
+        "main_text": 4000,
+        "significance": 120
+      },
+      "language": "American English",
+      "citation_style": "Cell format",
+      "structure_requirements": {
+        "sections": [
+          "Title",
+          "Summary", 
+          "Significance",
+          "Introduction",
+          "Results",
+          "Discussion", 
+          "Experimental Procedures",
+          "References"
+        ]
+      },
+      "style_guidelines": {
+        "spelling": "American English",
+        "figures": "maximum 8 main figures",
+        "references": "maximum 80 references"
+      },
+      "special_requirements": [
+        "Significance statement (120 words)",
+        "Graphical abstract required",
+        "eTOC blurb (40-50 words)"
+      ]
+    },
+
+    "The Lancet": {
+      "type": "journal",
+      "category": "international",
+      "word_limits": {
+        "abstract": 300,
+        "main_text": 4500,
+        "summary": 100
+      },
+      "language": "British English",
+      "citation_style": "Vancouver",
+      "structure_requirements": {
+        "abstract": {
+          "structure": "Background, Methods, Findings, Interpretation",
+          "max_words": 300
+        },
+        "sections": [
+          "Summary",
+          "Introduction", 
+          "Methods",
+          "Results",
+          "Discussion",
+          "References"
+        ]
+      },
+      "style_guidelines": {
+        "spelling": "British English",
+        "person": "first person acceptable",
+        "funding": "funding statement required"
+      },
+      "special_requirements": [
+        "Research in context panel",
+        "Role of funding source statement",
+        "Ethics approval statement"
+      ]
+    },
+
+    "New England Journal of Medicine": {
+      "type": "journal",
+      "category": "international",
+      "word_limits": {
+        "abstract": 250,
+        "main_text": 2700,
+        "brief_report": 1200
+      },
+      "language": "American English", 
+      "citation_style": "NEJM format",
+      "structure_requirements": {
+        "abstract": {
+          "structure": "Background, Methods, Results, Conclusions",
+          "max_words": 250
+        },
+        "sections": [
+          "Abstract",
+          "Introduction",
+          "Methods", 
+          "Results",
+          "Discussion",
+          "References"
+        ]
+      },
+      "style_guidelines": {
+        "spelling": "American English",
+        "statistics": "statistical methods must be detailed",
+        "clinical_trials": "registration number required"
+      }
+    },
+
+    "Journal of Biological Chemistry": {
+      "type": "journal",
+      "category": "subject_specific",
+      "word_limits": {
+        "abstract": 250,
+        "main_text": 6000
+      },
+      "language": "American English",
+      "citation_style": "JBC format", 
+      "structure_requirements": {
+        "sections": [
+          "Abstract",
+          "Introduction",
+          "Results",
+          "Discussion",
+          "Experimental Procedures", 
+          "References"
+        ]
+      },
+      "style_guidelines": {
+        "spelling": "American English",
+        "protein_names": "italicized gene names",
+        "methods": "detailed experimental procedures required"
+      }
+    },
+
+    "IEEE Transactions": {
+      "type": "journal",
+      "category": "subject_specific", 
+      "word_limits": {
+        "abstract": 200,
+        "main_text": 8000,
+        "keywords": 5
+      },
+      "language": "American English",
+      "citation_style": "IEEE format",
+      "structure_requirements": {
+        "sections": [
+          "Abstract",
+          "Index Terms",
+          "Introduction",
+          "Main Content",
+          "Conclusion", 
+          "References"
+        ]
+      },
+      "style_guidelines": {
+        "spelling": "American English",
+        "equations": "numbered sequentially",
+        "figures": "referenced in text order"
+      },
+      "special_requirements": [
+        "Index terms (5-10 keywords)",
+        "Copyright statement",
+        "Biographies of authors"
+      ]
+    },
+
+    "Physical Review Letters": {
+      "type": "journal",
+      "category": "subject_specific",
+      "word_limits": {
+        "abstract": 600,
+        "main_text": 3750,
+        "total": 4500
+      },
+      "language": "American English",
+      "citation_style": "Physical Review format",
+      "structure_requirements": {
+        "sections": [
+          "Abstract",
+          "Main text (continuous)",
+          "Acknowledgments",
+          "References"
+        ]
+      },
+      "style_guidelines": {
+        "spelling": "American English",
+        "equations": "displayed equations numbered",
+        "physics_notation": "standard physics notation required"
+      }
+    }
+  },
+
+  "conferences": {
+    "ACM CHI": {
+      "type": "conference",
+      "category": "computer_science",
+      "word_limits": {
+        "abstract": 150,
+        "main_text": 5000,
+        "short_paper": 2500
+      },
+      "language": "American English",
+      "citation_style": "ACM format",
+      "structure_requirements": {
+        "sections": [
+          "Abstract",
+          "Author Keywords",
+          "CCS Concepts",
+          "Introduction",
+          "Related Work",
+          "Main Content",
+          "Conclusion",
+          "Acknowledgments",
+          "References"
+        ]
+      },
+      "style_guidelines": {
+        "spelling": "American English",
+        "accessibility": "accessibility considerations required",
+        "human_subjects": "ethics approval for human studies"
+      },
+      "special_requirements": [
+        "CCS concepts classification",
+        "Author keywords (3-5)",
+        "Accessibility statement if applicable"
+      ]
+    },
+
+    "IEEE ICCV": {
+      "type": "conference",
+      "category": "computer_science",
+      "word_limits": {
+        "abstract": 200,
+        "main_text": 8000
+      },
+      "language": "American English", 
+      "citation_style": "IEEE format",
+      "structure_requirements": {
+        "sections": [
+          "Abstract",
+          "Introduction",
+          "Related Work",
+          "Method/Approach",
+          "Experiments",
+          "Conclusion",
+          "References"
+        ]
+      },
+      "style_guidelines": {
+        "spelling": "American English",
+        "figures": "high quality figures essential",
+        "datasets": "dataset details required"
+      }
+    },
+
+    "NeurIPS": {
+      "type": "conference",
+      "category": "computer_science",
+      "word_limits": {
+        "abstract": 250,
+        "main_text": 9000
+      },
+      "language": "American English",
+      "citation_style": "NeurIPS format",
+      "structure_requirements": {
+        "sections": [
+          "Abstract",
+          "Introduction", 
+          "Background/Related Work",
+          "Method",
+          "Experiments",
+          "Conclusion",
+          "References",
+          "Appendix (supplementary)"
+        ]
+      },
+      "style_guidelines": {
+        "spelling": "American English",
+        "reproducibility": "code and data availability expected",
+        "ethics": "broader impact statement required"
+      },
+      "special_requirements": [
+        "Broader impact statement",
+        "Reproducibility checklist",
+        "Code availability statement"
+      ]
+    },
+
+    "American Medical Association": {
+      "type": "conference",
+      "category": "medicine",
+      "word_limits": {
+        "abstract": 300,
+        "main_text": 2500
+      },
+      "language": "American English",
+      "citation_style": "AMA format",
+      "structure_requirements": {
+        "sections": [
+          "Abstract",
+          "Introduction",
+          "Methods",
+          "Results", 
+          "Discussion",
+          "Conclusions",
+          "References"
+        ]
+      },
+      "style_guidelines": {
+        "spelling": "American English",
+        "statistics": "detailed statistical methods",
+        "clinical": "patient consent statements"
+      }
+    }
+  },
+
+  "preprint_servers": {
+    "arXiv": {
+      "type": "preprint",
+      "word_limits": {
+        "abstract": 1920,
+        "main_text": "unlimited"
+      },
+      "language": "International English",
+      "citation_style": "flexible",
+      "style_guidelines": {
+        "formatting": "LaTeX preferred",
+        "accessibility": "screen reader friendly"
+      }
+    },
+
+    "bioRxiv": {
+      "type": "preprint", 
+      "word_limits": {
+        "abstract": 300,
+        "main_text": "unlimited"
+      },
+      "language": "International English",
+      "citation_style": "flexible",
+      "special_requirements": [
+        "Ethics statement for human subjects",
+        "Data availability statement"
+      ]
+    }
+  },
+
+  "language_variants": {
+    "American English": {
+      "spellings": {
+        "color": "color",
+        "realize": "realize", 
+        "center": "center",
+        "analyze": "analyze",
+        "organization": "organization"
+      },
+      "punctuation": {
+        "quotations": "\"inside punctuation.\"",
+        "oxford_comma": "required"
+      }
+    },
+
+    "British English": {
+      "spellings": {
+        "color": "colour",
+        "realize": "realise",
+        "center": "centre", 
+        "analyze": "analyse",
+        "organization": "organisation"
+      },
+      "punctuation": {
+        "quotations": "\"outside punctuation\".",
+        "oxford_comma": "optional"
+      }
+    },
+
+    "International English": {
+      "notes": "Mix of conventions, generally more flexible",
+      "preference": "clarity over strict regional rules"
+    }
+  },
+
+  "citation_styles": {
+    "Nature format": {
+      "type": "numbered",
+      "example": "Smith, J. Nature 123, 456-789 (2023).",
+      "notes": "Abbreviated journal names, no issue numbers"
+    },
+
+    "Science format": {
+      "type": "numbered", 
+      "example": "J. Smith, Science 123, 456 (2023).",
+      "notes": "Very abbreviated, page numbers without dash"
+    },
+
+    "APA": {
+      "type": "author-date",
+      "example": "Smith, J. (2023). Title. Journal Name, 123(4), 456-789.",
+      "notes": "Full journal names"
+    },
+
+    "IEEE": {
+      "type": "numbered",
+      "example": "[1] J. Smith, \"Title,\" Journal Name, vol. 123, no. 4, pp. 456-789, 2023.",
+      "notes": "Quoted article titles"
+    },
+
+    "MLA": {
+      "type": "author-page",
+      "example": "Smith, John. \"Title.\" Journal Name, vol. 123, no. 4, 2023, pp. 456-789.",
+      "notes": "Full names, quoted titles"
+    },
+
+    "Vancouver": {
+      "type": "numbered",
+      "example": "Smith J. Title. Journal Name. 2023;123(4):456-89.",
+      "notes": "Medical journals standard"
+    }
+  },
+
+  "regional_focuses": {
+    "International": {
+      "target_audience": "global research community",
+      "language_preference": "clear, accessible English",
+      "cultural_considerations": "avoid region-specific references"
+    },
+
+    "USA/Canada": {
+      "target_audience": "North American research community", 
+      "language_preference": "American English",
+      "cultural_considerations": "US regulations and standards referenced"
+    },
+
+    "UK/Europe": {
+      "target_audience": "European research community",
+      "language_preference": "British English", 
+      "cultural_considerations": "EU regulations and standards"
+    },
+
+    "Asia-Pacific": {
+      "target_audience": "Asian research community",
+      "language_preference": "International English",
+      "cultural_considerations": "regional research priorities"
+    }
+  },
+
+  "common_rewriting_patterns": {
+    "formality_adjustments": {
+      "informal_to_formal": {
+        "contractions": "don't → do not, can't → cannot",
+        "colloquialisms": "a lot of → numerous, got → obtained",
+        "personal_pronouns": "we found → the results indicate"
+      }
+    },
+
+    "structure_transformations": {
+      "IMRAD_to_Nature": {
+        "combine": "Results and Discussion often combined",
+        "methods": "Methods moved to end"
+      },
+      
+      "conference_to_journal": {
+        "expand": "Add more literature review",
+        "detail": "Increase methodological detail",
+        "significance": "Emphasize broader impact"
+      }
+    },
+
+    "language_standardization": {
+      "american_to_british": {
+        "systematic_changes": [
+          "ize → ise (realize → realise)",
+          "or → our (color → colour)", 
+          "er → re (center → centre)",
+          "single l → double l (modeling → modelling)"
+        ]
+      },
+
+      "british_to_american": {
+        "systematic_changes": [
+          "ise → ize (realise → realize)",
+          "our → or (colour → color)",
+          "re → er (centre → center)", 
+          "double l → single l (modelling → modeling)"
+        ]
+      }
+    }
+  },
+
+  "compliance_checkers": {
+    "word_count": {
+      "abstract": "count words excluding references",
+      "main_text": "exclude abstract, references, acknowledgments",
+      "total": "entire document including everything"
+    },
+
+    "language_detection": {
+      "indicators": [
+        "spelling patterns (colour vs color)",
+        "vocabulary choices (lift vs elevator)",
+        "punctuation styles"
+      ]
+    },
+
+    "structure_validation": {
+      "required_sections": "check all required sections present",
+      "section_order": "validate proper ordering",
+      "formatting": "check font, spacing, margins"
+    }
+  },
+
+  "ai_prompting_templates": {
+    "basic_rewrite": "Rewrite this research paper for {journal_name}. Follow {language} conventions, use {citation_style}, maintain {word_limit} word limit for abstract. Original text: {original_text}",
+
+    "detailed_rewrite": "Rewrite this research paper for submission to {journal_name}. Requirements: 1) Use {language} spelling and grammar 2) Abstract maximum {abstract_limit} words 3) Main text maximum {main_text_limit} words 4) Follow {citation_style} citation format 5) Structure: {required_sections} 6) Tone: {formality_level} 7) Special requirements: {special_notes}. Original text: {original_text}",
+
+    "style_only": "Convert this text from {source_language} to {target_language} while maintaining all content and meaning. Focus only on spelling, grammar, and style conventions: {original_text}"
+  },
+
+  "quality_metrics": {
+    "compliance_score": {
+      "word_limits": 25,
+      "language_consistency": 25, 
+      "structure_adherence": 25,
+      "style_guidelines": 25
+    },
+
+    "readability_metrics": [
+      "Flesch-Kincaid reading level",
+      "Average sentence length", 
+      "Technical term density",
+      "Clarity score"
+    ]
+  }
+}
