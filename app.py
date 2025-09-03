@@ -6,20 +6,21 @@ import sys
 import uuid
 from datetime import datetime
 import json
+import traceback
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Import feature handlers
-from features.explain_rewrite_handler import ExplainRewriteHandler
-from features.figure_fixer_handler import FigureFixerHandler
-from features.protocol_optimizer_handler import ProtocolOptimizerHandler
-from features.citation_context_handler import CitationContextHandler
-from features.idea_recombinator_handler import IdeaRecombinatorHandler
-from features.contradiction_detector_handler import ContradictionDetectorHandler
+# Import feature handlers - UPDATED PATHS
+from backend.explain_rewrite_handler import ExplainRewriteHandler
+from backend.figure_fixer_handler import FigureFixerHandler
+from backend.protocol_optimizer_handler import ProtocolOptimizerHandler
+from backend.idea_recombinator_handler import IdeaRecombinatorHandler
+from backend.contradiction_detector_handler import ContradictionDetectorHandler
+# Note: CitationContextHandler not needed since we're using CitationContextAnalyzer directly
 
-# Import utilities
-from utils.database_helper import DatabaseHelper
+# Import utilities - UPDATED PATH
+from backend.utils.database_helper import DatabaseHelper
 
 app = Flask(__name__, template_folder='../frontend/templates', static_folder='../frontend/static')
 app.secret_key = 'research_platform_prototype_key_2024'  # Change in production
@@ -29,7 +30,6 @@ CORS(app)
 explain_rewrite = ExplainRewriteHandler()
 figure_fixer = FigureFixerHandler()
 protocol_optimizer = ProtocolOptimizerHandler()
-citation_context = CitationContextHandler()
 idea_recombinator = IdeaRecombinatorHandler()
 contradiction_detector = ContradictionDetectorHandler()
 
@@ -190,53 +190,122 @@ def api_protocol_optimizer():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ================ CITATION CONTEXT FEATURE ================
+# NEW INTEGRATED CITATION CONTEXT ROUTES
 @app.route('/citation-context')
 def citation_context_page():
-    """Citation Context feature page"""
+    """Citation Context feature page - serves your HTML"""
     return render_template('citation_context.html')
 
-@app.route('/api/citation-context', methods=['POST'])
-def api_citation_context():
-    """API endpoint for citation analysis"""
+@app.route('/analyze_citations', methods=['POST'])
+def analyze_citations():
+    """
+    Unified route for Citation Context analysis
+    Matches the endpoint called by your HTML form
+    """
     try:
+        # Get user session (your existing pattern)
         user_id = get_user_session()
         
-        # Handle file upload or text input
+        # Validate request has required data
+        if not request.files.get('paper_file') and not request.form.get('paper_text'):
+            return jsonify({
+                'success': False,
+                'error': 'No paper content provided. Please upload a file or paste text.'
+            }), 400
+        
+        # Handle file upload
         if 'paper_file' in request.files and request.files['paper_file'].filename:
             file = request.files['paper_file']
-            if not allowed_file(file.filename):
-                return jsonify({'success': False, 'error': 'Invalid file type'}), 400
             
-            # Save file temporarily
+            # Validate file type
+            if not allowed_file(file.filename):
+                return jsonify({
+                    'success': False,
+                    'error': f'Invalid file type. Allowed types: {", ".join(ALLOWED_EXTENSIONS)}'
+                }), 400
+            
+            # Save file temporarily for processing
             filename = f"{uuid.uuid4().hex}_{file.filename}"
             filepath = os.path.join('uploads/temp/', filename)
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
             file.save(filepath)
             
-            result = citation_context.process_citation_analysis(
-                user_id=user_id,
-                paper_content=filepath,
-                citation_style=request.form.get('citation_style', 'APA'),
-                content_type='file'
-            )
+            # Extract text using FileProcessor
+            from backend.utils.file_processor import FileProcessor
+            file_processor = FileProcessor()
             
-            # Clean up temp file
-            os.remove(filepath)
+            extraction_success, text_content, extraction_metadata = file_processor.extract_text_from_file(filepath)
             
-        elif request.form.get('paper_text'):
-            result = citation_context.process_citation_analysis(
-                user_id=user_id,
-                paper_content=request.form.get('paper_text'),
-                citation_style=request.form.get('citation_style', 'APA'),
-                content_type='text'
-            )
+            # Clean up temp file immediately after extraction
+            try:
+                os.remove(filepath)
+            except:
+                pass  # Don't fail if cleanup fails
+            
+            if not extraction_success:
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to extract text from file: {text_content}'
+                }), 400
+            
+            if not text_content.strip():
+                return jsonify({
+                    'success': False,
+                    'error': 'The uploaded file appears to be empty or contains no readable text.'
+                }), 400
+            
+            content_type = 'file'
+            paper_content = text_content
+            
         else:
-            return jsonify({'success': False, 'error': 'No paper content provided'}), 400
+            # Handle text input
+            paper_content = request.form.get('paper_text', '').strip()
+            if not paper_content:
+                return jsonify({
+                    'success': False,
+                    'error': 'Please provide paper text for analysis.'
+                }), 400
+            content_type = 'text'
         
+        # Get form parameters with defaults matching your HTML
+        target_journal = request.form.get('target_journal', 'nature')
+        analysis_type = request.form.get('analysis_type', 'comprehensive')
+        custom_requirements = request.form.get('custom_requirements', '')
+        
+        # Import and initialize CitationContextAnalyzer
+        from backend.citation_context import CitationContextAnalyzer
+        citation_analyzer = CitationContextAnalyzer()
+        
+        # Process the citation analysis
+        result = citation_analyzer.process_citation_analysis(
+            session_id=user_id,  # Using user_id as session_id for your anonymous system
+            paper_content=paper_content,
+            target_journal=target_journal,
+            analysis_type=analysis_type,
+            custom_requirements=custom_requirements if custom_requirements else None,
+            content_type=content_type
+        )
+        
+        # The result is already formatted correctly for your HTML
         return jsonify(result)
         
+    except ImportError as e:
+        return jsonify({
+            'success': False,
+            'error': f'Module import failed: {str(e)}. Please check your file structure.'
+        }), 500
+    
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        # Log the full error for debugging
+        app.logger.error(f"Citation analysis error: {str(e)}\n{traceback.format_exc()}")
+        
+        return jsonify({
+            'success': False,
+            'error': f'Analysis failed: {str(e)}'
+        }), 500
+
+# Remove the old citation context route to avoid conflicts
+# @app.route('/api/citation-context', methods=['POST'])  # REMOVED
 
 # ================ IDEA RECOMBINATOR FEATURE ================
 @app.route('/idea-recombinator')
