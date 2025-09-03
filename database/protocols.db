@@ -1,0 +1,468 @@
+-- ===============================================
+-- PROTOCOLS.DB - Protocol Optimization Database
+-- ===============================================
+-- Database for storing research protocols, analysis results, and AI optimization suggestions
+-- Based on protocol_optimizer.html interface requirements
+
+-- Enable foreign key constraints
+PRAGMA foreign_keys = ON;
+
+-- ===============================================
+-- 1. PROTOCOLS TABLE - Main protocol storage
+-- ===============================================
+CREATE TABLE protocols (
+    protocol_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT,  -- Can be session_id for anonymous users or user_id for registered
+    
+    -- Protocol Content
+    protocol_text TEXT NOT NULL,  -- Main protocol content (from textarea or extracted from file)
+    original_filename TEXT,       -- Original uploaded filename if applicable
+    file_type TEXT,              -- pdf, doc, docx, txt, or 'manual' if pasted
+    
+    -- Study Details (from form)
+    study_type TEXT,             -- randomized_controlled_trial, observational, etc.
+    research_field TEXT,         -- medicine, psychology, biology, etc.
+    sample_size INTEGER,         -- Number of participants/subjects
+    duration TEXT,              -- Study duration (e.g., "12 weeks", "6 months")
+    
+    -- Analysis Focus Areas (JSON array of selected checkboxes)
+    focus_areas TEXT,           -- JSON: ["statistical_power", "bias_detection", "reproducibility"]
+    
+    -- Processing Status
+    status TEXT DEFAULT 'pending',  -- pending, processing, completed, error
+    processing_started_at DATETIME,
+    processing_completed_at DATETIME,
+    
+    -- Metadata
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    -- User session info
+    ip_address TEXT,
+    user_agent TEXT
+);
+
+-- ===============================================
+-- 2. PROTOCOL_ANALYSIS_RESULTS - AI Analysis Output
+-- ===============================================
+CREATE TABLE protocol_analysis_results (
+    result_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    protocol_id INTEGER NOT NULL,
+    
+    -- Analysis Categories
+    category TEXT NOT NULL,  -- 'statistical_power', 'bias_detection', 'reproducibility', etc.
+    severity TEXT,          -- 'low', 'medium', 'high', 'critical'
+    result_type TEXT,       -- 'improvement', 'risk', 'suggestion', 'enhancement'
+    
+    -- Analysis Content
+    title TEXT NOT NULL,           -- Short title for the finding
+    description TEXT NOT NULL,     -- Detailed explanation
+    recommendation TEXT,           -- Specific action recommendation
+    
+    -- AI Processing Details
+    confidence_score REAL,         -- AI confidence (0.0 to 1.0)
+    ai_model TEXT,                -- Which AI model generated this result
+    processing_time_ms INTEGER,    -- Time taken to generate this result
+    
+    -- Priority and Impact
+    priority_rank INTEGER,         -- 1 = highest priority
+    impact_level TEXT,            -- 'low', 'medium', 'high'
+    
+    -- Timestamps
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (protocol_id) REFERENCES protocols(protocol_id) ON DELETE CASCADE
+);
+
+-- ===============================================
+-- 3. PROTOCOL_IMPROVEMENTS - Specific Improvement Suggestions
+-- ===============================================
+CREATE TABLE protocol_improvements (
+    improvement_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    protocol_id INTEGER NOT NULL,
+    
+    -- Improvement Details
+    improvement_category TEXT NOT NULL,  -- 'methodology', 'analysis', 'design', 'ethics'
+    original_section TEXT,               -- Which part of protocol needs improvement
+    suggested_change TEXT NOT NULL,      -- What should be changed
+    rationale TEXT NOT NULL,            -- Why this change is recommended
+    
+    -- Implementation Details
+    difficulty_level TEXT,              -- 'easy', 'moderate', 'difficult', 'major_redesign'
+    estimated_impact TEXT,              -- 'minor', 'moderate', 'significant', 'major'
+    implementation_notes TEXT,           -- How to implement the change
+    
+    -- References and Evidence
+    supporting_evidence TEXT,           -- References or evidence for the suggestion
+    alternative_options TEXT,           -- Alternative ways to address the issue
+    
+    -- User Interaction
+    user_rating INTEGER,               -- User rating of suggestion (1-5)
+    user_feedback TEXT,                -- User comments on the suggestion
+    implemented BOOLEAN DEFAULT 0,      -- Whether user marked as implemented
+    
+    -- Timestamps
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (protocol_id) REFERENCES protocols(protocol_id) ON DELETE CASCADE
+);
+
+-- ===============================================
+-- 4. PROTOCOL_RISKS - Identified Risk Factors
+-- ===============================================
+CREATE TABLE protocol_risks (
+    risk_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    protocol_id INTEGER NOT NULL,
+    
+    -- Risk Classification
+    risk_type TEXT NOT NULL,           -- 'bias', 'statistical', 'ethical', 'methodological'
+    risk_level TEXT NOT NULL,          -- 'low', 'medium', 'high', 'critical'
+    risk_category TEXT,                -- 'selection_bias', 'measurement_bias', 'confounding', etc.
+    
+    -- Risk Description
+    risk_title TEXT NOT NULL,
+    risk_description TEXT NOT NULL,
+    potential_impact TEXT NOT NULL,     -- What could happen if not addressed
+    
+    -- Mitigation
+    mitigation_strategy TEXT,          -- How to reduce/eliminate the risk
+    mitigation_priority TEXT,          -- 'immediate', 'before_start', 'during_study', 'analysis'
+    
+    -- Detection and Monitoring
+    detection_method TEXT,             -- How to detect if this risk is occurring
+    monitoring_frequency TEXT,         -- How often to check for this risk
+    
+    -- Timestamps
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (protocol_id) REFERENCES protocols(protocol_id) ON DELETE CASCADE
+);
+
+-- ===============================================
+-- 5. PROTOCOL_STATISTICAL_ANALYSIS - Power Analysis & Stats
+-- ===============================================
+CREATE TABLE protocol_statistical_analysis (
+    analysis_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    protocol_id INTEGER NOT NULL,
+    
+    -- Sample Size Analysis
+    current_sample_size INTEGER,
+    recommended_sample_size INTEGER,
+    power_analysis_result REAL,        -- Statistical power (0.0 to 1.0)
+    effect_size_assumed REAL,          -- Effect size used in calculation
+    alpha_level REAL DEFAULT 0.05,     -- Significance level
+    
+    -- Statistical Methods
+    primary_analysis_method TEXT,       -- t-test, ANOVA, regression, etc.
+    secondary_analysis_methods TEXT,    -- JSON array of additional analyses
+    multiple_comparison_correction TEXT, -- Bonferroni, FDR, etc.
+    
+    -- Data Distribution and Assumptions
+    data_distribution_assumptions TEXT,  -- Normal, non-normal, etc.
+    assumption_violations TEXT,         -- Potential violations identified
+    alternative_methods TEXT,           -- Non-parametric alternatives suggested
+    
+    -- Missing Data and Dropouts
+    expected_dropout_rate REAL,        -- Expected % of participants dropping out
+    missing_data_strategy TEXT,        -- How to handle missing data
+    sensitivity_analysis_needed BOOLEAN DEFAULT 0,
+    
+    -- Analysis Plan Completeness
+    analysis_plan_score INTEGER,       -- 1-10 completeness score
+    preregistration_recommended BOOLEAN DEFAULT 0,
+    analysis_plan_gaps TEXT,          -- What's missing from the analysis plan
+    
+    -- Timestamps
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (protocol_id) REFERENCES protocols(protocol_id) ON DELETE CASCADE
+);
+
+-- ===============================================
+-- 6. PROTOCOL_PROCESSING_LOGS - Processing History
+-- ===============================================
+CREATE TABLE protocol_processing_logs (
+    log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    protocol_id INTEGER NOT NULL,
+    
+    -- Processing Details
+    processing_step TEXT NOT NULL,      -- 'file_upload', 'text_extraction', 'ai_analysis', etc.
+    status TEXT NOT NULL,              -- 'started', 'completed', 'error'
+    
+    -- Timing
+    step_started_at DATETIME NOT NULL,
+    step_completed_at DATETIME,
+    processing_duration_ms INTEGER,
+    
+    -- AI Model Details
+    ai_model_used TEXT,                -- Which model processed this step
+    tokens_used INTEGER,               -- Number of tokens consumed
+    api_response_time_ms INTEGER,      -- API response time
+    
+    -- Error Handling
+    error_message TEXT,                -- Error details if status = 'error'
+    error_code TEXT,                   -- Error classification
+    retry_count INTEGER DEFAULT 0,     -- Number of retries attempted
+    
+    -- Processing Metadata
+    input_size_bytes INTEGER,          -- Size of input data
+    output_size_bytes INTEGER,         -- Size of generated output
+    processing_notes TEXT,             -- Additional processing details
+    
+    -- Timestamps
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (protocol_id) REFERENCES protocols(protocol_id) ON DELETE CASCADE
+);
+
+-- ===============================================
+-- 7. USER_PROTOCOL_FEEDBACK - User Ratings & Feedback
+-- ===============================================
+CREATE TABLE user_protocol_feedback (
+    feedback_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    protocol_id INTEGER NOT NULL,
+    user_id TEXT,  -- Same as protocols.user_id
+    
+    -- Overall Ratings
+    overall_usefulness_rating INTEGER,  -- 1-5 rating
+    accuracy_rating INTEGER,           -- 1-5 rating
+    actionability_rating INTEGER,      -- 1-5 rating
+    
+    -- Specific Feature Feedback
+    statistical_analysis_helpful BOOLEAN,
+    bias_detection_helpful BOOLEAN,
+    reproducibility_suggestions_helpful BOOLEAN,
+    methodology_improvements_helpful BOOLEAN,
+    
+    -- Detailed Feedback
+    most_valuable_suggestion TEXT,      -- Which suggestion was most helpful
+    least_valuable_suggestion TEXT,     -- Which suggestion was least helpful
+    additional_suggestions_wanted TEXT, -- What else would be helpful
+    
+    -- Implementation Status
+    suggestions_implemented INTEGER,    -- How many suggestions were implemented
+    implementation_challenges TEXT,     -- Challenges in implementing suggestions
+    protocol_improvement_achieved BOOLEAN, -- Did the protocol actually improve?
+    
+    -- Open Feedback
+    general_comments TEXT,
+    feature_requests TEXT,
+    bugs_or_issues TEXT,
+    
+    -- Timestamps
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (protocol_id) REFERENCES protocols(protocol_id) ON DELETE CASCADE
+);
+
+-- ===============================================
+-- INDEXES for Performance Optimization
+-- ===============================================
+
+-- Main protocol lookups
+CREATE INDEX idx_protocols_user_id ON protocols(user_id);
+CREATE INDEX idx_protocols_created_at ON protocols(created_at);
+CREATE INDEX idx_protocols_status ON protocols(status);
+CREATE INDEX idx_protocols_study_type ON protocols(study_type);
+CREATE INDEX idx_protocols_research_field ON protocols(research_field);
+
+-- Analysis results lookups
+CREATE INDEX idx_analysis_results_protocol_id ON protocol_analysis_results(protocol_id);
+CREATE INDEX idx_analysis_results_category ON protocol_analysis_results(category);
+CREATE INDEX idx_analysis_results_severity ON protocol_analysis_results(severity);
+CREATE INDEX idx_analysis_results_priority ON protocol_analysis_results(priority_rank);
+
+-- Improvements lookups
+CREATE INDEX idx_improvements_protocol_id ON protocol_improvements(protocol_id);
+CREATE INDEX idx_improvements_category ON protocol_improvements(improvement_category);
+CREATE INDEX idx_improvements_difficulty ON protocol_improvements(difficulty_level);
+
+-- Risks lookups
+CREATE INDEX idx_risks_protocol_id ON protocol_risks(protocol_id);
+CREATE INDEX idx_risks_level ON protocol_risks(risk_level);
+CREATE INDEX idx_risks_type ON protocol_risks(risk_type);
+
+-- Processing logs
+CREATE INDEX idx_logs_protocol_id ON protocol_processing_logs(protocol_id);
+CREATE INDEX idx_logs_step ON protocol_processing_logs(processing_step);
+CREATE INDEX idx_logs_created_at ON protocol_processing_logs(created_at);
+
+-- ===============================================
+-- VIEWS for Common Queries
+-- ===============================================
+
+-- Complete protocol summary with analysis counts
+CREATE VIEW protocol_summary AS
+SELECT 
+    p.protocol_id,
+    p.user_id,
+    p.study_type,
+    p.research_field,
+    p.sample_size,
+    p.duration,
+    p.status,
+    p.created_at,
+    COUNT(DISTINCT par.result_id) as total_analysis_results,
+    COUNT(DISTINCT pi.improvement_id) as total_improvements,
+    COUNT(DISTINCT pr.risk_id) as total_risks,
+    AVG(par.confidence_score) as avg_confidence_score,
+    MAX(par.created_at) as last_analysis_date
+FROM protocols p
+LEFT JOIN protocol_analysis_results par ON p.protocol_id = par.protocol_id
+LEFT JOIN protocol_improvements pi ON p.protocol_id = pi.protocol_id  
+LEFT JOIN protocol_risks pr ON p.protocol_id = pr.protocol_id
+GROUP BY p.protocol_id;
+
+-- High priority issues requiring immediate attention
+CREATE VIEW high_priority_issues AS
+SELECT 
+    p.protocol_id,
+    p.study_type,
+    p.research_field,
+    'Analysis Result' as issue_type,
+    par.title as issue_title,
+    par.description as issue_description,
+    par.severity,
+    par.priority_rank,
+    par.created_at
+FROM protocols p
+JOIN protocol_analysis_results par ON p.protocol_id = par.protocol_id
+WHERE par.severity IN ('high', 'critical') OR par.priority_rank <= 3
+
+UNION ALL
+
+SELECT 
+    p.protocol_id,
+    p.study_type,
+    p.research_field,
+    'Risk' as issue_type,
+    pr.risk_title as issue_title,
+    pr.risk_description as issue_description,
+    pr.risk_level as severity,
+    CASE 
+        WHEN pr.risk_level = 'critical' THEN 1
+        WHEN pr.risk_level = 'high' THEN 2
+        WHEN pr.risk_level = 'medium' THEN 3
+        ELSE 4
+    END as priority_rank,
+    pr.created_at
+FROM protocols p
+JOIN protocol_risks pr ON p.protocol_id = pr.protocol_id
+WHERE pr.risk_level IN ('high', 'critical')
+
+ORDER BY priority_rank, created_at;
+
+-- ===============================================
+-- SAMPLE DATA (for testing)
+-- ===============================================
+
+-- Sample protocol entry
+INSERT INTO protocols (
+    user_id, protocol_text, study_type, research_field, sample_size, duration, 
+    focus_areas, status
+) VALUES (
+    'test_session_123',
+    'Randomized controlled trial to test effectiveness of daily meditation on stress levels. Participants: 50 adults aged 25-65. Intervention: 20-minute daily guided meditation vs wait-list control. Duration: 8 weeks. Primary outcome: Perceived Stress Scale scores. Secondary outcomes: cortisol levels, sleep quality.',
+    'randomized_controlled_trial',
+    'psychology',
+    50,
+    '8 weeks',
+    '["statistical_power", "bias_detection", "reproducibility"]',
+    'completed'
+);
+
+-- Sample analysis results
+INSERT INTO protocol_analysis_results (
+    protocol_id, category, severity, result_type, title, description, 
+    recommendation, confidence_score, ai_model, priority_rank, impact_level
+) VALUES 
+(1, 'statistical_power', 'medium', 'improvement', 'Sample Size Enhancement', 
+ 'Current sample size of 50 may be insufficient for detecting medium effect sizes in stress reduction studies.',
+ 'Consider increasing sample size to 80-100 participants to achieve 80% statistical power.',
+ 0.87, 'llama-3-70b', 1, 'high'),
+
+(1, 'bias_detection', 'high', 'risk', 'Selection Bias Risk',
+ 'No randomization procedure specified. Wait-list control may introduce expectation bias.',
+ 'Implement proper randomization and consider active control condition or double-blinding where possible.',
+ 0.92, 'llama-3-70b', 2, 'high');
+
+-- Sample improvements
+INSERT INTO protocol_improvements (
+    protocol_id, improvement_category, original_section, suggested_change, 
+    rationale, difficulty_level, estimated_impact
+) VALUES 
+(1, 'methodology', 'Participant recruitment', 
+ 'Add baseline stress level screening and stratified randomization',
+ 'Ensures balanced groups and adequate stress levels for intervention effectiveness',
+ 'moderate', 'significant');
+
+-- Sample risks
+INSERT INTO protocol_risks (
+    protocol_id, risk_type, risk_level, risk_title, risk_description,
+    potential_impact, mitigation_strategy, mitigation_priority
+) VALUES 
+(1, 'bias', 'medium', 'Expectancy Bias',
+ 'Participants in meditation group may have higher expectations for improvement',
+ 'Could inflate treatment effects and reduce study validity',
+ 'Use credible active control condition and assess expectancy ratings',
+ 'before_start');
+
+-- ===============================================
+-- TRIGGERS for Automatic Updates
+-- ===============================================
+
+-- Update protocols.updated_at when any related data changes
+CREATE TRIGGER update_protocol_timestamp_on_analysis
+AFTER INSERT ON protocol_analysis_results
+FOR EACH ROW
+BEGIN
+    UPDATE protocols 
+    SET updated_at = CURRENT_TIMESTAMP 
+    WHERE protocol_id = NEW.protocol_id;
+END;
+
+CREATE TRIGGER update_protocol_timestamp_on_improvement
+AFTER INSERT ON protocol_improvements
+FOR EACH ROW
+BEGIN
+    UPDATE protocols 
+    SET updated_at = CURRENT_TIMESTAMP 
+    WHERE protocol_id = NEW.protocol_id;
+END;
+
+CREATE TRIGGER update_protocol_timestamp_on_risk
+AFTER INSERT ON protocol_risks
+FOR EACH ROW
+BEGIN
+    UPDATE protocols 
+    SET updated_at = CURRENT_TIMESTAMP 
+    WHERE protocol_id = NEW.protocol_id;
+END;
+
+-- ===============================================
+-- CLEANUP PROCEDURES (for maintenance)
+-- ===============================================
+
+-- Clean up old anonymous user data (older than 30 days)
+-- CREATE EVENT (if supported) or run periodically:
+-- DELETE FROM protocols 
+-- WHERE user_id LIKE 'session_%' 
+-- AND created_at < datetime('now', '-30 days');
+
+-- ===============================================
+-- DATABASE COMPLETE
+-- ===============================================
+-- This database schema supports:
+-- ✅ Protocol storage (text + metadata from HTML form)
+-- ✅ AI analysis results with confidence scores
+-- ✅ Detailed improvement suggestions  
+-- ✅ Risk identification and mitigation
+-- ✅ Statistical analysis recommendations
+-- ✅ Processing logs and error tracking
+-- ✅ User feedback and ratings
+-- ✅ Performance optimization with indexes
+-- ✅ Common query views
+-- ✅ Sample data for testing
+-- ✅ Automatic timestamp updates
+-- ✅ Foreign key constraints and data integrity
+-- ===============================================
