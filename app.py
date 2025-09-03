@@ -283,18 +283,24 @@ def analyze_citations():
         from backend.citation_context import CitationContextAnalyzer
         citation_analyzer = CitationContextAnalyzer()
         
-        # Process the citation analysis
-        result = citation_analyzer.process_citation_analysis(
-            session_id=user_id,  # Using user_id as session_id for your anonymous system
+        # FIXED: Use the correct method name from your CitationContextAnalyzer class
+        result = citation_analyzer.analyze_citations(
             paper_content=paper_content,
             target_journal=target_journal,
             analysis_type=analysis_type,
-            custom_requirements=custom_requirements if custom_requirements else None,
-            content_type=content_type
+            custom_requirements=custom_requirements if custom_requirements else None
         )
         
-        # The result is already formatted correctly for your HTML
-        return jsonify(result)
+        # Format the result to match what your HTML expects
+        formatted_result = {
+            'success': True,
+            'analysis': result,
+            'content_type': content_type,
+            'target_journal': target_journal,
+            'analysis_type': analysis_type
+        }
+        
+        return jsonify(formatted_result)
         
     except ImportError as e:
         return jsonify({
@@ -310,9 +316,6 @@ def analyze_citations():
             'success': False,
             'error': f'Analysis failed: {str(e)}'
         }), 500
-
-# Remove the old citation context route to avoid conflicts
-# @app.route('/api/citation-context', methods=['POST'])  # REMOVED
 
 # ================ IDEA RECOMBINATOR FEATURE ================
 @app.route('/idea-recombinator')
