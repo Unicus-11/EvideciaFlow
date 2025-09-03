@@ -1,10 +1,16 @@
 # PDF processing
+from typing import Tuple, List, Dict, Any
+from pathlib import Path
+import hashlib
+import logging
+from datetime import datetime
+
+# Image processing
 try:
-    import PyPDF2
-    import pdfplumber
-    PDF_AVAILABLE = True
+    from PIL import Image, ImageStat
+    PIL_AVAILABLE = True
 except ImportError:
-    PDF_AVAILABLE = False
+    PIL_AVAILABLE = False
 
 # Document processing
 try:

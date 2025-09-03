@@ -1,5 +1,5 @@
-# backend/app.py
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
+# app.py - Main Flask application
+from flask import Flask, request, jsonify, render_template, session
 from flask_cors import CORS
 import os
 import sys
@@ -9,17 +9,22 @@ import json
 import traceback
 
 # Add project root to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Import feature handlers - UPDATED PATHS
-from backend.explain_rewrite_handler import ExplainRewriteHandler
-from backend.figure_fixer_handler import FigureFixerHandler
-from backend.protocol_optimizer_handler import ProtocolOptimizerHandler
-from backend.idea_recombinator_handler import IdeaRecombinatorHandler
-from backend.contradiction_detector_handler import ContradictionDetectorHandler
-# Note: CitationContextHandler not needed since we're using CitationContextAnalyzer directly
+# Import your actual feature modules (not handlers)
+try:
+    from backend.citation_context import CitationContextAnalyzer
+except ImportError:
+    CitationContextAnalyzer = None
+    print("Warning: CitationContextAnalyzer not found")
 
-# Import utilities - UPDATED PATH
+try:
+    from ai.ai_manager import AIManager
+except ImportError:
+    AIManager = None
+    print("Warning: AIManager not found")
+
+# Import utilities
 try:
     from backend.utils.database_helper import DatabaseHelper
 except ImportError:
@@ -29,18 +34,31 @@ except ImportError:
         def get_all_journals(self): return []
         def get_user_activity(self, user_id): return []
 
-app = Flask(__name__, template_folder='../frontend/templates', static_folder='../frontend/static')
+try:
+    from backend.utils.file_processor import FileProcessor
+except ImportError:
+    FileProcessor = None
+    print("Warning: FileProcessor not found")
+
+app = Flask(__name__, template_folder='frontend', static_folder='frontend')
 app.secret_key = 'research_platform_prototype_key_2024'  # Change in production
 CORS(app)
 
-# Initialize handlers
-explain_rewrite = ExplainRewriteHandler()
-figure_fixer = FigureFixerHandler()
-protocol_optimizer = ProtocolOptimizerHandler()
-idea_recombinator = IdeaRecombinatorHandler()
-contradiction_detector = ContradictionDetectorHandler()
-
+# Initialize components
 db_helper = DatabaseHelper()
+if FileProcessor:
+    file_processor = FileProcessor()
+else:
+    file_processor = None
+
+if AIManager:
+    try:
+        ai_manager = AIManager()
+    except Exception as e:
+        print(f"Warning: Could not initialize AIManager: {e}")
+        ai_manager = None
+else:
+    ai_manager = None
 
 # Configuration
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
@@ -62,156 +80,26 @@ def get_user_session():
 def dashboard():
     """Main dashboard showing all features"""
     user_id = get_user_session()
-    return render_template('dashboard.html', user_id=user_id)
-
-# ================ EXPLAIN/REWRITE FEATURE ================
-@app.route('/explain-rewrite')
-def explain_rewrite_page():
-    """Explain/Rewrite feature page"""
-    return render_template('explain_rewrite.html')
-
-@app.route('/api/explain-rewrite', methods=['POST'])
-def api_explain_rewrite():
-    """API endpoint for paper rewriting"""
-    try:
-        user_id = get_user_session()
-        
-        # Handle file upload or text input
-        if 'paper_file' in request.files and request.files['paper_file'].filename:
-            file = request.files['paper_file']
-            if not allowed_file(file.filename):
-                return jsonify({'success': False, 'error': 'Invalid file type'}), 400
-            
-            # Save file temporarily
-            filename = f"{uuid.uuid4().hex}_{file.filename}"
-            filepath = os.path.join('uploads/temp/', filename)
-            os.makedirs(os.path.dirname(filepath), exist_ok=True)
-            file.save(filepath)
-            
-            result = explain_rewrite.process_rewrite_request(
-                user_id=user_id,
-                paper_content=filepath,
-                target_journal=request.form.get('target_journal'),
-                content_type='file'
-            )
-            
-            # Clean up temp file
-            os.remove(filepath)
-            
-        elif request.form.get('paper_text'):
-            result = explain_rewrite.process_rewrite_request(
-                user_id=user_id,
-                paper_content=request.form.get('paper_text'),
-                target_journal=request.form.get('target_journal'),
-                content_type='text'
-            )
-        else:
-            return jsonify({'success': False, 'error': 'No paper content provided'}), 400
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# ================ FIGURE FIXER FEATURE ================
-@app.route('/figure-fixer')
-def figure_fixer_page():
-    """Figure Fixer feature page"""
-    return render_template('figure_fixer.html')
-
-@app.route('/api/figure-fixer', methods=['POST'])
-def api_figure_fixer():
-    """API endpoint for figure fixing"""
-    try:
-        user_id = get_user_session()
-        
-        if 'figure_file' not in request.files:
-            return jsonify({'success': False, 'error': 'No figure file provided'}), 400
-        
-        file = request.files['figure_file']
-        if file.filename == '':
-            return jsonify({'success': False, 'error': 'No file selected'}), 400
-        
-        if not allowed_file(file.filename):
-            return jsonify({'success': False, 'error': 'Invalid file type'}), 400
-        
-        result = figure_fixer.process_figure_request(
-            user_id=user_id,
-            figure_file=file,
-            target_publication=request.form.get('target_publication'),
-            figure_type=request.form.get('figure_type', 'graph')
-        )
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# ================ PROTOCOL OPTIMIZER FEATURE ================
-@app.route('/protocol-optimizer')
-def protocol_optimizer_page():
-    """Protocol Optimizer feature page"""
-    return render_template('protocol_optimizer.html')
-
-@app.route('/api/protocol-optimizer', methods=['POST'])
-def api_protocol_optimizer():
-    """API endpoint for protocol optimization"""
-    try:
-        user_id = get_user_session()
-        
-        # Handle file upload or text input
-        if 'protocol_file' in request.files and request.files['protocol_file'].filename:
-            file = request.files['protocol_file']
-            if not allowed_file(file.filename):
-                return jsonify({'success': False, 'error': 'Invalid file type'}), 400
-            
-            # Save file temporarily
-            filename = f"{uuid.uuid4().hex}_{file.filename}"
-            filepath = os.path.join('uploads/temp/', filename)
-            os.makedirs(os.path.dirname(filepath), exist_ok=True)
-            file.save(filepath)
-            
-            result = protocol_optimizer.process_protocol_optimization(
-                user_id=user_id,
-                protocol_content=filepath,
-                research_field=request.form.get('research_field'),
-                content_type='file'
-            )
-            
-            # Clean up temp file
-            os.remove(filepath)
-            
-        elif request.form.get('protocol_text'):
-            result = protocol_optimizer.process_protocol_optimization(
-                user_id=user_id,
-                protocol_content=request.form.get('protocol_text'),
-                research_field=request.form.get('research_field'),
-                content_type='text'
-            )
-        else:
-            return jsonify({'success': False, 'error': 'No protocol content provided'}), 400
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    return render_template('home.html', user_id=user_id)
 
 # ================ CITATION CONTEXT FEATURE ================
-# NEW INTEGRATED CITATION CONTEXT ROUTES
 @app.route('/citation-context')
 def citation_context_page():
-    """Citation Context feature page - serves your HTML"""
+    """Citation Context feature page"""
     return render_template('citation_context.html')
 
 @app.route('/analyze_citations', methods=['POST'])
 def analyze_citations():
-    """
-    Unified route for Citation Context analysis
-    Matches the endpoint called by your HTML form
-    """
+    """Citation Context analysis endpoint"""
     try:
-        # Get user session (your existing pattern)
         user_id = get_user_session()
+        
+        # Check if CitationContextAnalyzer is available
+        if not CitationContextAnalyzer:
+            return jsonify({
+                'success': False,
+                'error': 'Citation analysis feature not available'
+            }), 500
         
         # Validate request has required data
         if not request.files.get('paper_file') and not request.form.get('paper_text'):
@@ -231,6 +119,12 @@ def analyze_citations():
                     'error': f'Invalid file type. Allowed types: {", ".join(ALLOWED_EXTENSIONS)}'
                 }), 400
             
+            if not file_processor:
+                return jsonify({
+                    'success': False,
+                    'error': 'File processing not available'
+                }), 500
+            
             # Save file temporarily for processing
             filename = f"{uuid.uuid4().hex}_{file.filename}"
             filepath = os.path.join('uploads/temp/', filename)
@@ -238,9 +132,6 @@ def analyze_citations():
             file.save(filepath)
             
             # Extract text using FileProcessor
-            from backend.utils.file_processor import FileProcessor
-            file_processor = FileProcessor()
-            
             extraction_success, text_content, extraction_metadata = file_processor.extract_text_from_file(filepath)
             
             # Clean up temp file immediately after extraction
@@ -274,16 +165,14 @@ def analyze_citations():
                 }), 400
             content_type = 'text'
         
-        # Get form parameters with defaults matching your HTML
+        # Get form parameters
         target_journal = request.form.get('target_journal', 'nature')
         analysis_type = request.form.get('analysis_type', 'comprehensive')
         custom_requirements = request.form.get('custom_requirements', '')
         
-        # Import and initialize CitationContextAnalyzer
-        from backend.citation_context import CitationContextAnalyzer
+        # Initialize and run citation analysis
         citation_analyzer = CitationContextAnalyzer()
         
-        # FIXED: Use the correct method name from your CitationContextAnalyzer class
         result = citation_analyzer.analyze_citations(
             paper_content=paper_content,
             target_journal=target_journal,
@@ -291,7 +180,7 @@ def analyze_citations():
             custom_requirements=custom_requirements if custom_requirements else None
         )
         
-        # Format the result to match what your HTML expects
+        # Format the result
         formatted_result = {
             'success': True,
             'analysis': result,
@@ -302,12 +191,6 @@ def analyze_citations():
         
         return jsonify(formatted_result)
         
-    except ImportError as e:
-        return jsonify({
-            'success': False,
-            'error': f'Module import failed: {str(e)}. Please check your file structure.'
-        }), 500
-    
     except Exception as e:
         # Log the full error for debugging
         app.logger.error(f"Citation analysis error: {str(e)}\n{traceback.format_exc()}")
@@ -317,57 +200,67 @@ def analyze_citations():
             'error': f'Analysis failed: {str(e)}'
         }), 500
 
-# ================ IDEA RECOMBINATOR FEATURE ================
-@app.route('/idea-recombinator')
-def idea_recombinator_page():
-    """Idea Recombinator feature page"""
-    return render_template('idea_recombinator.html')
-
-@app.route('/api/idea-recombinator', methods=['POST'])
-def api_idea_recombinator():
-    """API endpoint for idea recombination"""
+# ================ AI-POWERED FEATURES ================
+@app.route('/api/ai-process', methods=['POST'])
+def api_ai_process():
+    """Generic AI processing endpoint"""
     try:
+        if not ai_manager:
+            return jsonify({
+                'success': False,
+                'error': 'AI processing not available'
+            }), 500
+        
         user_id = get_user_session()
         
-        # Get form data
-        research_interests = request.form.get('research_interests', '').split('\n')
-        research_interests = [interest.strip() for interest in research_interests if interest.strip()]
+        # Get request data
+        feature = request.json.get('feature')
+        data = request.json.get('data', {})
         
-        current_projects = request.form.get('current_projects', '')
-        inspiration_sources = request.form.get('inspiration_sources', '')
+        if not feature:
+            return jsonify({
+                'success': False,
+                'error': 'Feature not specified'
+            }), 400
         
-        if not research_interests:
-            return jsonify({'success': False, 'error': 'Please provide research interests'}), 400
-        
-        result = idea_recombinator.process_idea_recombination(
-            user_id=user_id,
-            research_interests=research_interests,
-            current_projects=current_projects,
-            inspiration_sources=inspiration_sources if inspiration_sources else None
-        )
+        # Process through AI manager
+        result = ai_manager.process_request(feature, data, user_id)
         
         return jsonify(result)
         
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
-# ================ CONTRADICTION DETECTOR FEATURE ================
-@app.route('/contradiction-detector')
-def contradiction_detector_page():
-    """Contradiction Detector feature page"""
-    return render_template('contradiction_detector.html')
+# ================ EXPLAIN/REWRITE FEATURE ================
+@app.route('/explain-rewrite')
+def explain_rewrite_page():
+    """Explain/Rewrite feature page"""
+    return render_template('explain_rewrite.html')
 
-@app.route('/api/contradiction-detector', methods=['POST'])
-def api_contradiction_detector():
-    """API endpoint for contradiction detection"""
+@app.route('/api/explain-rewrite', methods=['POST'])
+def api_explain_rewrite():
+    """API endpoint for paper rewriting using AI manager"""
     try:
+        if not ai_manager:
+            return jsonify({
+                'success': False,
+                'error': 'AI processing not available'
+            }), 500
+        
         user_id = get_user_session()
         
         # Handle file upload or text input
+        paper_content = None
         if 'paper_file' in request.files and request.files['paper_file'].filename:
             file = request.files['paper_file']
             if not allowed_file(file.filename):
                 return jsonify({'success': False, 'error': 'Invalid file type'}), 400
+            
+            if not file_processor:
+                return jsonify({'success': False, 'error': 'File processing not available'}), 500
             
             # Save file temporarily
             filename = f"{uuid.uuid4().hex}_{file.filename}"
@@ -375,25 +268,29 @@ def api_contradiction_detector():
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
             file.save(filepath)
             
-            result = contradiction_detector.process_contradiction_detection(
-                user_id=user_id,
-                paper_content=filepath,
-                analysis_depth=request.form.get('analysis_depth', 'standard'),
-                content_type='file'
-            )
+            # Extract text
+            success, text_content, _ = file_processor.extract_text_from_file(filepath)
+            os.remove(filepath)  # Clean up
             
-            # Clean up temp file
-            os.remove(filepath)
+            if not success:
+                return jsonify({'success': False, 'error': f'Failed to extract text: {text_content}'}), 400
+            
+            paper_content = text_content
             
         elif request.form.get('paper_text'):
-            result = contradiction_detector.process_contradiction_detection(
-                user_id=user_id,
-                paper_content=request.form.get('paper_text'),
-                analysis_depth=request.form.get('analysis_depth', 'standard'),
-                content_type='text'
-            )
+            paper_content = request.form.get('paper_text')
         else:
             return jsonify({'success': False, 'error': 'No paper content provided'}), 400
+        
+        # Prepare data for AI manager
+        data = {
+            'text': paper_content,
+            'target_journal': request.form.get('target_journal', 'Nature'),
+            'language': 'American English'
+        }
+        
+        # Process through AI manager
+        result = ai_manager.process_request('explain_rewrite', data, user_id)
         
         return jsonify(result)
         
@@ -401,6 +298,29 @@ def api_contradiction_detector():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ================ UTILITY ENDPOINTS ================
+@app.route('/api/health')
+def api_health():
+    """Health check endpoint"""
+    health_status = {
+        'status': 'healthy',
+        'features': {
+            'ai_manager': ai_manager is not None,
+            'citation_analyzer': CitationContextAnalyzer is not None,
+            'file_processor': file_processor is not None,
+            'database': True  # Always available (dummy or real)
+        }
+    }
+    
+    # Test AI if available
+    if ai_manager:
+        try:
+            ai_health = ai_manager.health_check()
+            health_status['ai_status'] = ai_health
+        except:
+            health_status['ai_status'] = {'status': 'unhealthy'}
+    
+    return jsonify(health_status)
+
 @app.route('/api/journals')
 def api_get_journals():
     """Get list of available journals"""
@@ -410,24 +330,14 @@ def api_get_journals():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/user-activity')
-def api_user_activity():
-    """Get user activity history"""
-    try:
-        user_id = get_user_session()
-        activity = db_helper.get_user_activity(user_id)
-        return jsonify({'success': True, 'activity': activity})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
 # ================ ERROR HANDLERS ================
 @app.errorhandler(404)
 def not_found_error(error):
-    return render_template('404.html'), 404
+    return jsonify({'error': 'Not found'}), 404
 
 @app.errorhandler(500)
 def internal_error(error):
-    return render_template('500.html'), 500
+    return jsonify({'error': 'Internal server error'}), 500
 
 @app.errorhandler(413)
 def too_large(e):
@@ -437,7 +347,11 @@ if __name__ == '__main__':
     # Create necessary directories
     os.makedirs('uploads/temp/', exist_ok=True)
     os.makedirs('uploads/figures/', exist_ok=True)
-    os.makedirs('uploads/fixed_figures/', exist_ok=True)
     
     # Run the application
+    print("Starting Research Platform...")
+    print(f"AI Manager: {'Available' if ai_manager else 'Not available'}")
+    print(f"Citation Analyzer: {'Available' if CitationContextAnalyzer else 'Not available'}")
+    print(f"File Processor: {'Available' if file_processor else 'Not available'}")
+    
     app.run(debug=True, host='0.0.0.0', port=5000)

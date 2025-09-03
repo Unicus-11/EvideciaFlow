@@ -1,0 +1,36 @@
+[33mcommit 94c3fd33ea624296ceb08d4ce37b2e5e1d85b5a1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Unicus-11 <mandukya8@gmail.com>
+Date:   Thu Sep 4 04:19:06 2025 +0530
+
+    requirements.txt
+
+[1mdiff --git a/requirements.txt b/requirements.txt[m
+[1mindex e69de29..6aba8d7 100644[m
+[1m--- a/requirements.txt[m
+[1m+++ b/requirements.txt[m
+[36m@@ -0,0 +1,25 @@[m
+[32m+[m[32m# Core Flask dependencies[m[41m[m
+[32m+[m[32mFlask==2.3.3[m[41m[m
+[32m+[m[32mFlask-CORS==4.0.0[m[41m[m
+[32m+[m[32mWerkzeug==2.3.7[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32m# AI libraries[m[41m[m
+[32m+[m[32mgroq==0.4.1[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32m# File processing libraries[m[41m[m
+[32m+[m[32mPyPDF2==3.0.1[m[41m[m
+[32m+[m[32mpdfplumber==0.10.3[m[41m[m
+[32m+[m[32mpython-docx==0.8.11[m[41m[m
+[32m+[m[32mmammoth==1.6.0[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32m# Image processing[m[41m[m
+[32m+[m[32mPillow==10.1.0[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32m# Standard library imports (no installation needed)[m[41m[m
+[32m+[m[32m# - os, sys, uuid, datetime, json, traceback[m[41m[m
+[32m+[m[32m# - time, typing, logging, hashlib, pathlib[m[41m[m
+[32m+[m[32m# - importlib, re[m[41m[m
+[32m+[m[41m[m
+[32m+[m[32m# Optional: Database (if you add database functionality later)[m[41m[m
+[32m+[m[32m# sqlite3  # Built into Python[m[41m[m
+[32m+[m[32m# sqlalchemy==2.0.23[m[41m[m
