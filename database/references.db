@@ -1,0 +1,393 @@
+-- references.db - Citation Context Feature Database Schema
+-- Supports comprehensive citation analysis and context improvement
+
+-- Main citations table - stores individual citations with context
+CREATE TABLE IF NOT EXISTS citations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT,  -- links to users.db, NULL for anonymous
+    session_id TEXT NOT NULL,
+    paper_id TEXT NOT NULL, -- links to research_papers_content.db
+    
+    -- Citation identification and location
+    citation_text TEXT NOT NULL,  -- exact citation as it appears in text
+    citation_type TEXT NOT NULL CHECK (citation_type IN ('in-text', 'bibliography', 'footnote', 'endnote')),
+    section_location TEXT,        -- 'introduction', 'methods', 'results', 'discussion', etc.
+    paragraph_number INTEGER,
+    sentence_number INTEGER,
+    page_number INTEGER,
+    
+    -- Citation style information
+    detected_style TEXT,          -- 'APA', 'IEEE', 'Nature', 'MLA', 'Harvard', etc.
+    expected_style TEXT,          -- target style based on journal requirements
+    style_compliance REAL,        -- 0.0-1.0 compliance score
+    
+    -- Reference metadata (parsed from citation)
+    title TEXT,
+    authors TEXT,                 -- JSON array or comma-separated
+    publication_year INTEGER,
+    journal_name TEXT,
+    volume TEXT,
+    issue TEXT,
+    pages TEXT,
+    doi TEXT,
+    url TEXT,
+    isbn TEXT,
+    publisher TEXT,
+    publication_type TEXT CHECK (publication_type IN ('journal', 'book', 'conference', 'thesis', 'website', 'report', 'patent', 'other')),
+    
+    -- Citation context analysis
+    context_before TEXT,          -- 50 words before citation
+    context_after TEXT,           -- 50 words after citation  
+    sentence_context TEXT,        -- complete sentence containing citation
+    paragraph_context TEXT,       -- complete paragraph containing citation
+    
+    -- AI analysis results
+    relevance_score REAL,         -- 0.0-1.0 how relevant citation is to context
+    context_quality TEXT CHECK (context_quality IN ('excellent', 'good', 'fair', 'poor', 'missing')),
+    integration_quality TEXT CHECK (integration_quality IN ('seamless', 'good', 'acceptable', 'awkward', 'dropped')),
+    purpose_analysis TEXT,        -- 'support', 'background', 'contrast', 'method', 'comparison'
+    
+    -- Source quality assessment
+    source_credibility TEXT CHECK (source_credibility IN ('high', 'medium', 'low', 'questionable')),
+    is_peer_reviewed BOOLEAN,
+    is_recent BOOLEAN,           -- within last 5-10 years depending on field
+    access_status TEXT CHECK (access_status IN ('open', 'subscription', 'paywall', 'broken', 'unknown')),
+    
+    -- Processing metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    analysis_version TEXT DEFAULT '1.0'
+);
+
+-- Bibliography entries table - complete reference list
+CREATE TABLE IF NOT EXISTS bibliography_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT,
+    session_id TEXT NOT NULL,
+    paper_id TEXT NOT NULL,
+    
+    -- Reference details
+    entry_text TEXT NOT NULL,     -- complete bibliography entry as written
+    parsed_title TEXT,
+    parsed_authors TEXT,          -- JSON array
+    parsed_year INTEGER,
+    parsed_journal TEXT,
+    parsed_volume TEXT,
+    parsed_pages TEXT,
+    parsed_doi TEXT,
+    parsed_url TEXT,
+    
+    -- Quality analysis
+    format_compliance REAL,      -- 0.0-1.0 formatting correctness
+    completeness_score REAL,     -- 0.0-1.0 all required fields present
+    consistency_issues TEXT,     -- JSON array of formatting problems
+    
+    -- Cross-referencing
+    cited_in_text BOOLEAN,       -- appears in in-text citations
+    citation_frequency INTEGER,  -- how many times cited in paper
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Citation patterns analysis - aggregated insights
+CREATE TABLE IF NOT EXISTS citation_patterns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT,
+    session_id TEXT NOT NULL,
+    paper_id TEXT NOT NULL,
+    
+    -- Overall statistics
+    total_citations INTEGER,
+    unique_sources INTEGER,
+    avg_citations_per_page REAL,
+    citation_density REAL,       -- citations per 1000 words
+    
+    -- Style analysis
+    dominant_style TEXT,
+    style_consistency REAL,      -- 0.0-1.0 consistency across paper
+    style_violations INTEGER,
+    
+    -- Source diversity
+    journal_articles_count INTEGER,
+    book_count INTEGER,
+    conference_count INTEGER,
+    website_count INTEGER,
+    other_sources_count INTEGER,
+    
+    -- Quality metrics
+    peer_reviewed_percentage REAL,
+    recent_sources_percentage REAL,  -- within field-appropriate timeframe
+    high_impact_sources_count INTEGER,
+    
+    -- Problematic patterns
+    over_reliance_authors TEXT,   -- JSON array of over-cited authors
+    missing_citation_areas TEXT,  -- JSON array of sections needing citations
+    weak_citations_count INTEGER,
+    
+    -- Section distribution
+    intro_citations INTEGER,
+    methods_citations INTEGER,
+    results_citations INTEGER,
+    discussion_citations INTEGER,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Citation gaps - areas needing citations
+CREATE TABLE IF NOT EXISTS citation_gaps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT,
+    session_id TEXT NOT NULL,
+    paper_id TEXT NOT NULL,
+    
+    -- Gap location
+    section_name TEXT,
+    paragraph_number INTEGER,
+    sentence_text TEXT,
+    
+    -- Gap analysis
+    gap_type TEXT CHECK (gap_type IN ('unsupported_claim', 'methodology_reference', 'background_missing', 'comparison_needed', 'statistical_method')),
+    severity TEXT CHECK (severity IN ('critical', 'important', 'minor')),
+    suggested_citation_types TEXT, -- JSON array of recommended source types
+    
+    -- AI suggestions
+    suggested_search_terms TEXT,  -- JSON array
+    example_citations TEXT,       -- JSON array of similar citations from database
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Citation improvements - AI suggestions for better citations
+CREATE TABLE IF NOT EXISTS citation_improvements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    citation_id INTEGER REFERENCES citations(id),
+    user_id TEXT,
+    session_id TEXT NOT NULL,
+    
+    -- Improvement details
+    improvement_type TEXT CHECK (improvement_type IN ('format_fix', 'better_source', 'context_improvement', 'relevance_boost', 'style_correction')),
+    current_text TEXT,
+    suggested_text TEXT,
+    explanation TEXT,
+    confidence_score REAL,       -- 0.0-1.0 AI confidence in suggestion
+    
+    -- Alternative sources
+    alternative_sources TEXT,    -- JSON array of better source suggestions
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Journal citation requirements - links to journal_requirements.db
+CREATE TABLE IF NOT EXISTS journal_citation_standards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    journal_name TEXT NOT NULL,
+    
+    -- Style requirements
+    required_style TEXT,
+    min_citations INTEGER,
+    max_citations INTEGER,
+    recent_sources_required BOOLEAN,
+    recent_cutoff_years INTEGER,
+    
+    -- Format specifications
+    author_format TEXT,          -- 'full-name', 'last-first', 'initials'
+    date_format TEXT,
+    title_capitalization TEXT,
+    journal_abbreviation_required BOOLEAN,
+    
+    -- Quality standards
+    peer_review_percentage_min REAL,
+    self_citation_limit INTEGER,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- User analysis sessions - tracks analysis requests and results
+CREATE TABLE IF NOT EXISTS analysis_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT,
+    session_id TEXT NOT NULL,
+    paper_id TEXT NOT NULL,
+    
+    -- Analysis configuration from HTML form
+    target_journal TEXT,
+    expected_citation_style TEXT,
+    research_field TEXT,
+    analysis_depth TEXT CHECK (analysis_depth IN ('quick', 'standard', 'comprehensive')),
+    
+    -- Feature flags from checkboxes
+    context_analysis_enabled BOOLEAN DEFAULT TRUE,
+    relevance_check_enabled BOOLEAN DEFAULT TRUE,
+    format_check_enabled BOOLEAN DEFAULT TRUE,
+    coverage_analysis_enabled BOOLEAN DEFAULT TRUE,
+    source_quality_enabled BOOLEAN DEFAULT TRUE,
+    gap_detection_enabled BOOLEAN DEFAULT TRUE,
+    
+    -- Processing status
+    status TEXT CHECK (status IN ('pending', 'processing', 'completed', 'error')) DEFAULT 'pending',
+    processing_start_time TIMESTAMP,
+    processing_end_time TIMESTAMP,
+    error_message TEXT,
+    
+    -- Overall results summary
+    total_citations_found INTEGER,
+    context_quality_score REAL,     -- 0.0-10.0 scale for display
+    format_consistency_percentage REAL,
+    source_quality_percentage REAL,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Source credibility database - helps assess citation quality
+CREATE TABLE IF NOT EXISTS source_credibility (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    
+    -- Source identification
+    journal_name TEXT,
+    publisher TEXT,
+    issn TEXT,
+    domain TEXT,                 -- for websites
+    
+    -- Credibility metrics
+    impact_factor REAL,
+    scimago_rank INTEGER,
+    is_predatory BOOLEAN DEFAULT FALSE,
+    is_peer_reviewed BOOLEAN DEFAULT TRUE,
+    credibility_score REAL,     -- 0.0-1.0 overall credibility
+    
+    -- Classification
+    source_type TEXT CHECK (source_type IN ('journal', 'conference', 'book_publisher', 'website', 'repository')),
+    research_fields TEXT,       -- JSON array of fields this source covers
+    
+    -- Quality indicators
+    editorial_board_quality TEXT CHECK (editorial_board_quality IN ('high', 'medium', 'low', 'unknown')),
+    review_process_quality TEXT CHECK (review_process_quality IN ('rigorous', 'standard', 'light', 'unknown')),
+    
+    -- Red flags
+    warning_flags TEXT,         -- JSON array: ['predatory', 'pay-to-publish', 'low-quality', 'bias']
+    
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Citation format templates - for style correction
+CREATE TABLE IF NOT EXISTS citation_format_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    
+    -- Style information
+    citation_style TEXT NOT NULL,
+    publication_type TEXT NOT NULL,
+    
+    -- Format templates
+    in_text_template TEXT,       -- e.g., "(Author, Year)" for APA
+    bibliography_template TEXT,  -- e.g., "Author, A. (Year). Title. Journal, Vol(Issue), pages."
+    
+    -- Special rules
+    multiple_authors_rule TEXT,
+    same_author_same_year_rule TEXT,
+    page_number_format TEXT,
+    url_format TEXT,
+    doi_format TEXT,
+    
+    -- Example
+    example_citation TEXT,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Analysis results export - for user download
+CREATE TABLE IF NOT EXISTS analysis_exports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    user_id TEXT,
+    
+    -- Export configuration
+    export_format TEXT CHECK (export_format IN ('pdf', 'docx', 'html', 'json')),
+    sections_included TEXT,      -- JSON array of sections to include
+    
+    -- Export content
+    file_path TEXT,
+    file_size INTEGER,
+    
+    -- Download tracking
+    download_count INTEGER DEFAULT 0,
+    expires_at TIMESTAMP,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for performance optimization
+CREATE INDEX IF NOT EXISTS idx_citations_session ON citations(session_id);
+CREATE INDEX IF NOT EXISTS idx_citations_paper ON citations(paper_id);
+CREATE INDEX IF NOT EXISTS idx_citations_style ON citations(detected_style);
+CREATE INDEX IF NOT EXISTS idx_citations_quality ON citations(context_quality);
+CREATE INDEX IF NOT EXISTS idx_citations_relevance ON citations(relevance_score);
+
+CREATE INDEX IF NOT EXISTS idx_bibliography_session ON bibliography_entries(session_id);
+CREATE INDEX IF NOT EXISTS idx_bibliography_paper ON bibliography_entries(paper_id);
+
+CREATE INDEX IF NOT EXISTS idx_patterns_session ON citation_patterns(session_id);
+CREATE INDEX IF NOT EXISTS idx_patterns_paper ON citation_patterns(paper_id);
+
+CREATE INDEX IF NOT EXISTS idx_gaps_session ON citation_gaps(session_id);
+CREATE INDEX IF NOT EXISTS idx_gaps_severity ON citation_gaps(severity);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_status ON analysis_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_sessions_created ON analysis_sessions(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_credibility_journal ON source_credibility(journal_name);
+CREATE INDEX IF NOT EXISTS idx_credibility_score ON source_credibility(credibility_score);
+
+-- Sample data insertion for testing
+INSERT OR REPLACE INTO source_credibility (journal_name, publisher, impact_factor, is_peer_reviewed, credibility_score, source_type, research_fields) VALUES
+('Nature', 'Nature Publishing Group', 49.962, TRUE, 1.0, 'journal', '["biology", "chemistry", "physics", "environmental"]'),
+('Science', 'American Association for the Advancement of Science', 47.728, TRUE, 1.0, 'journal', '["multidisciplinary"]'),
+('IEEE Access', 'IEEE', 3.367, TRUE, 0.8, 'journal', '["computer_science", "engineering"]'),
+('PLOS ONE', 'Public Library of Science', 3.240, TRUE, 0.8, 'journal', '["multidisciplinary"]'),
+('Wikipedia', 'Wikimedia Foundation', NULL, FALSE, 0.2, 'website', '["general"]');
+
+INSERT OR REPLACE INTO citation_format_templates (citation_style, publication_type, in_text_template, bibliography_template, example_citation) VALUES
+('APA', 'journal', '(Author, Year)', 'Author, A. (Year). Title. Journal Name, Volume(Issue), pages. DOI', 'Smith, J. (2023). Plant growth analysis. Nature Plants, 9(3), 123-130. doi:10.1038/s41477-023-01234-5'),
+('IEEE', 'journal', '[Number]', '[Number] A. Author, "Title," Journal Name, vol. X, no. Y, pp. Z-W, Month Year.', '[1] J. Smith, "Advanced neural networks," IEEE Trans. Neural Networks, vol. 34, no. 2, pp. 123-135, Feb. 2023.'),
+('Nature', 'journal', 'Superscript number', 'Author, A. Title. Journal Name vol, pages (Year).', 'Smith, J. Plant growth under stress. Nature Plants 9, 123-130 (2023).');
+
+-- Views for common queries
+CREATE VIEW IF NOT EXISTS citation_quality_summary AS
+SELECT 
+    session_id,
+    COUNT(*) as total_citations,
+    AVG(relevance_score) as avg_relevance,
+    AVG(CASE context_quality 
+        WHEN 'excellent' THEN 4 
+        WHEN 'good' THEN 3 
+        WHEN 'fair' THEN 2 
+        WHEN 'poor' THEN 1 
+        ELSE 0 END) as avg_context_quality,
+    SUM(CASE WHEN is_peer_reviewed = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as peer_reviewed_percentage
+FROM citations 
+GROUP BY session_id;
+
+CREATE VIEW IF NOT EXISTS problematic_citations AS
+SELECT 
+    c.*,
+    sc.credibility_score,
+    sc.warning_flags
+FROM citations c
+LEFT JOIN source_credibility sc ON c.journal_name = sc.journal_name
+WHERE c.context_quality IN ('poor', 'missing') 
+   OR c.relevance_score < 0.5 
+   OR sc.credibility_score < 0.5
+   OR sc.is_predatory = TRUE;
+
+-- Triggers for maintaining data consistency
+CREATE TRIGGER IF NOT EXISTS update_citations_timestamp 
+    AFTER UPDATE ON citations
+BEGIN
+    UPDATE citations SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_session_timestamp 
+    AFTER UPDATE ON analysis_sessions
+BEGIN
+    UPDATE analysis_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
