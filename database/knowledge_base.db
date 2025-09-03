@@ -1,0 +1,315 @@
+-- Knowledge Base Database for Idea Recombinator
+-- Stores research interests, sources, and generated ideas for synthesis
+
+-- User research interests and areas of focus
+CREATE TABLE IF NOT EXISTS research_interests (
+    interest_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    user_id INTEGER,
+    interest_text TEXT NOT NULL,
+    category TEXT, -- e.g., 'methodology', 'domain', 'application'
+    weight REAL DEFAULT 1.0, -- importance weight for synthesis
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Knowledge sources (papers, URLs, project descriptions)
+CREATE TABLE IF NOT EXISTS knowledge_sources (
+    source_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    user_id INTEGER,
+    source_type TEXT NOT NULL, -- 'file', 'url', 'text', 'project_description'
+    title TEXT,
+    content TEXT, -- extracted text content
+    url TEXT, -- if web source
+    file_path TEXT, -- if uploaded file
+    file_metadata TEXT, -- JSON with file details
+    processing_status TEXT DEFAULT 'pending', -- 'pending', 'processed', 'failed'
+    processing_error TEXT,
+    word_count INTEGER,
+    key_concepts TEXT, -- JSON array of extracted concepts
+    methodology_tags TEXT, -- JSON array of methodologies mentioned
+    domain_tags TEXT, -- JSON array of research domains
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP
+);
+
+-- Synthesis requests and configurations
+CREATE TABLE IF NOT EXISTS synthesis_requests (
+    request_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    user_id INTEGER,
+    synthesis_methods TEXT, -- JSON array: cross_domain, methodology_fusion, etc.
+    innovation_focus TEXT, -- JSON array: novel_applications, emerging_technologies, etc.
+    creativity_level TEXT DEFAULT 'moderate', -- conservative, moderate, creative, radical
+    target_domain TEXT,
+    idea_count INTEGER DEFAULT 5,
+    status TEXT DEFAULT 'pending', -- 'pending', 'processing', 'completed', 'failed'
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP
+);
+
+-- Link synthesis requests to their input sources
+CREATE TABLE IF NOT EXISTS synthesis_sources (
+    link_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id INTEGER NOT NULL,
+    source_id INTEGER NOT NULL,
+    FOREIGN KEY (request_id) REFERENCES synthesis_requests(request_id) ON DELETE CASCADE,
+    FOREIGN KEY (source_id) REFERENCES knowledge_sources(source_id) ON DELETE CASCADE
+);
+
+-- Link synthesis requests to research interests used
+CREATE TABLE IF NOT EXISTS synthesis_interests (
+    link_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id INTEGER NOT NULL,
+    interest_id INTEGER NOT NULL,
+    FOREIGN KEY (request_id) REFERENCES synthesis_requests(request_id) ON DELETE CASCADE,
+    FOREIGN KEY (interest_id) REFERENCES research_interests(interest_id) ON DELETE CASCADE
+);
+
+-- Generated research ideas
+CREATE TABLE IF NOT EXISTS generated_ideas (
+    idea_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id INTEGER NOT NULL,
+    idea_title TEXT NOT NULL,
+    idea_description TEXT NOT NULL,
+    novelty_score REAL, -- 0-10 estimated novelty
+    feasibility_score REAL, -- 0-10 estimated feasibility
+    impact_score REAL, -- 0-10 estimated impact
+    source_concepts TEXT, -- JSON array of concepts that contributed to this idea
+    methodological_approaches TEXT, -- JSON array of methods suggested
+    interdisciplinary_connections TEXT, -- JSON array of fields connected
+    collaboration_suggestions TEXT, -- JSON array of suggested collaborations
+    next_steps TEXT, -- suggested next steps for pursuing the idea
+    research_gaps TEXT, -- JSON array of gaps this idea addresses
+    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (request_id) REFERENCES synthesis_requests(request_id) ON DELETE CASCADE
+);
+
+-- User feedback on generated ideas
+CREATE TABLE IF NOT EXISTS idea_feedback (
+    feedback_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    idea_id INTEGER NOT NULL,
+    session_id TEXT NOT NULL,
+    user_id INTEGER,
+    rating INTEGER, -- 1-5 stars
+    feedback_type TEXT, -- 'interest', 'novelty', 'feasibility', 'clarity'
+    comments TEXT,
+    is_bookmarked BOOLEAN DEFAULT FALSE,
+    is_pursuing BOOLEAN DEFAULT FALSE, -- user plans to pursue this idea
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (idea_id) REFERENCES generated_ideas(idea_id) ON DELETE CASCADE
+);
+
+-- Concept extraction and mapping
+CREATE TABLE IF NOT EXISTS extracted_concepts (
+    concept_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_id INTEGER NOT NULL,
+    concept_text TEXT NOT NULL,
+    concept_type TEXT, -- 'method', 'theory', 'application', 'tool', 'domain'
+    frequency INTEGER DEFAULT 1, -- how often mentioned in source
+    confidence REAL, -- AI confidence in extraction (0-1)
+    context_snippets TEXT, -- JSON array of text snippets where concept appears
+    related_concepts TEXT, -- JSON array of related concept IDs
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (source_id) REFERENCES knowledge_sources(source_id) ON DELETE CASCADE
+);
+
+-- Cross-domain connections discovered during synthesis
+CREATE TABLE IF NOT EXISTS domain_connections (
+    connection_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id INTEGER NOT NULL,
+    domain_a TEXT NOT NULL,
+    domain_b TEXT NOT NULL,
+    connection_type TEXT, -- 'methodological', 'conceptual', 'applied', 'theoretical'
+    connection_strength REAL, -- 0-1 strength of connection
+    connecting_concepts TEXT, -- JSON array of concepts that bridge domains
+    example_applications TEXT, -- JSON array of potential applications
+    literature_gaps TEXT, -- identified gaps in cross-domain literature
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (request_id) REFERENCES synthesis_requests(request_id) ON DELETE CASCADE
+);
+
+-- Methodology combinations and fusions
+CREATE TABLE IF NOT EXISTS methodology_fusions (
+    fusion_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id INTEGER NOT NULL,
+    primary_method TEXT NOT NULL,
+    secondary_method TEXT NOT NULL,
+    fusion_description TEXT NOT NULL,
+    potential_advantages TEXT, -- JSON array of advantages
+    implementation_challenges TEXT, -- JSON array of challenges
+    suitable_applications TEXT, -- JSON array of application areas
+    precedent_examples TEXT, -- JSON array of similar combinations in literature
+    novelty_assessment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (request_id) REFERENCES synthesis_requests(request_id) ON DELETE CASCADE
+);
+
+-- User's idea development progress
+CREATE TABLE IF NOT EXISTS idea_development (
+    development_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    idea_id INTEGER NOT NULL,
+    session_id TEXT NOT NULL,
+    user_id INTEGER,
+    development_stage TEXT, -- 'initial', 'refined', 'proposal', 'pilot', 'full_study'
+    progress_notes TEXT,
+    resources_gathered TEXT, -- JSON array of resources collected
+    collaborators_identified TEXT, -- JSON array of potential collaborators
+    funding_sources TEXT, -- JSON array of funding opportunities
+    timeline_estimate TEXT,
+    current_obstacles TEXT, -- JSON array of current challenges
+    next_milestones TEXT, -- JSON array of upcoming goals
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (idea_id) REFERENCES generated_ideas(idea_id) ON DELETE CASCADE
+);
+
+-- Collaboration network mapping
+CREATE TABLE IF NOT EXISTS collaboration_network (
+    network_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id INTEGER NOT NULL,
+    primary_field TEXT NOT NULL,
+    collaborating_field TEXT NOT NULL,
+    collaboration_rationale TEXT,
+    shared_methods TEXT, -- JSON array of methods both fields use
+    complementary_strengths TEXT, -- JSON array of complementary aspects
+    potential_projects TEXT, -- JSON array of collaborative project ideas
+    existing_examples TEXT, -- JSON array of existing collaborations
+    barriers_to_collaboration TEXT, -- JSON array of potential barriers
+    success_factors TEXT, -- JSON array of factors for successful collaboration
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (request_id) REFERENCES synthesis_requests(request_id) ON DELETE CASCADE
+);
+
+-- Research trend analysis
+CREATE TABLE IF NOT EXISTS research_trends (
+    trend_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id INTEGER,
+    trend_name TEXT NOT NULL,
+    trend_description TEXT,
+    trend_type TEXT, -- 'emerging', 'declining', 'stable', 'cyclical'
+    relevance_score REAL, -- 0-1 relevance to user's interests
+    time_horizon TEXT, -- 'short_term', 'medium_term', 'long_term'
+    opportunity_areas TEXT, -- JSON array of opportunities
+    related_concepts TEXT, -- JSON array of related concept IDs
+    supporting_evidence TEXT, -- JSON array of evidence for trend
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (request_id) REFERENCES synthesis_requests(request_id) ON DELETE CASCADE
+);
+
+-- Indexes for performance optimization
+CREATE INDEX IF NOT EXISTS idx_research_interests_session ON research_interests(session_id);
+CREATE INDEX IF NOT EXISTS idx_research_interests_user ON research_interests(user_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_sources_session ON knowledge_sources(session_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_sources_type ON knowledge_sources(source_type);
+CREATE INDEX IF NOT EXISTS idx_knowledge_sources_status ON knowledge_sources(processing_status);
+CREATE INDEX IF NOT EXISTS idx_synthesis_requests_session ON synthesis_requests(session_id);
+CREATE INDEX IF NOT EXISTS idx_synthesis_requests_status ON synthesis_requests(status);
+CREATE INDEX IF NOT EXISTS idx_generated_ideas_request ON generated_ideas(request_id);
+CREATE INDEX IF NOT EXISTS idx_extracted_concepts_source ON extracted_concepts(source_id);
+CREATE INDEX IF NOT EXISTS idx_extracted_concepts_type ON extracted_concepts(concept_type);
+CREATE INDEX IF NOT EXISTS idx_idea_feedback_idea ON idea_feedback(idea_id);
+CREATE INDEX IF NOT EXISTS idx_idea_feedback_session ON idea_feedback(session_id);
+CREATE INDEX IF NOT EXISTS idx_domain_connections_request ON domain_connections(request_id);
+CREATE INDEX IF NOT EXISTS idx_methodology_fusions_request ON methodology_fusions(request_id);
+
+-- Views for common queries
+CREATE VIEW IF NOT EXISTS user_active_interests AS
+SELECT ri.*, COUNT(si.interest_id) as usage_count
+FROM research_interests ri
+LEFT JOIN synthesis_interests si ON ri.interest_id = si.interest_id
+GROUP BY ri.interest_id
+ORDER BY ri.last_used DESC;
+
+CREATE VIEW IF NOT EXISTS source_processing_summary AS
+SELECT 
+    source_type,
+    processing_status,
+    COUNT(*) as count,
+    AVG(word_count) as avg_word_count
+FROM knowledge_sources
+GROUP BY source_type, processing_status;
+
+CREATE VIEW IF NOT EXISTS top_rated_ideas AS
+SELECT 
+    gi.*,
+    AVG(if.rating) as avg_rating,
+    COUNT(if.feedback_id) as feedback_count,
+    SUM(CASE WHEN if.is_bookmarked THEN 1 ELSE 0 END) as bookmark_count
+FROM generated_ideas gi
+LEFT JOIN idea_feedback if ON gi.idea_id = if.idea_id
+GROUP BY gi.idea_id
+HAVING feedback_count > 0
+ORDER BY avg_rating DESC, bookmark_count DESC;
+
+CREATE VIEW IF NOT EXISTS synthesis_performance_stats AS
+SELECT 
+    creativity_level,
+    target_domain,
+    AVG(idea_count) as avg_ideas_generated,
+    COUNT(*) as request_count,
+    AVG(CASE WHEN status = 'completed' THEN 1.0 ELSE 0.0 END) as success_rate,
+    AVG((julianday(completed_at) - julianday(created_at)) * 24 * 60) as avg_processing_minutes
+FROM synthesis_requests
+GROUP BY creativity_level, target_domain;
+
+-- Triggers for data maintenance
+CREATE TRIGGER IF NOT EXISTS update_interest_last_used
+AFTER INSERT ON synthesis_interests
+BEGIN
+    UPDATE research_interests 
+    SET last_used = CURRENT_TIMESTAMP 
+    WHERE interest_id = NEW.interest_id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_source_processed_at
+AFTER UPDATE OF processing_status ON knowledge_sources
+WHEN NEW.processing_status = 'processed'
+BEGIN
+    UPDATE knowledge_sources 
+    SET processed_at = CURRENT_TIMESTAMP 
+    WHERE source_id = NEW.source_id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_synthesis_completed_at
+AFTER UPDATE OF status ON synthesis_requests
+WHEN NEW.status = 'completed'
+BEGIN
+    UPDATE synthesis_requests 
+    SET completed_at = CURRENT_TIMESTAMP 
+    WHERE request_id = NEW.request_id;
+END;
+
+-- Sample data for testing (optional - remove in production)
+INSERT OR IGNORE INTO research_interests (session_id, interest_text, category, weight) VALUES
+('test_session_001', 'machine learning in healthcare', 'application', 1.0),
+('test_session_001', 'federated learning for privacy', 'methodology', 0.9),
+('test_session_001', 'explainable AI systems', 'methodology', 0.8),
+('test_session_002', 'sustainable materials science', 'domain', 1.0),
+('test_session_002', 'biomimetic design principles', 'methodology', 0.9);
+
+-- Database metadata
+CREATE TABLE IF NOT EXISTS db_metadata (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT OR REPLACE INTO db_metadata (key, value) VALUES 
+('schema_version', '1.0'),
+('created_at', datetime('now')),
+('description', 'Knowledge base for AI-powered research idea synthesis'),
+('feature', 'idea_recombinator');
+
+-- Database statistics view
+CREATE VIEW IF NOT EXISTS database_stats AS
+SELECT 
+    'research_interests' as table_name, COUNT(*) as record_count FROM research_interests
+UNION ALL SELECT 'knowledge_sources', COUNT(*) FROM knowledge_sources
+UNION ALL SELECT 'synthesis_requests', COUNT(*) FROM synthesis_requests
+UNION ALL SELECT 'generated_ideas', COUNT(*) FROM generated_ideas
+UNION ALL SELECT 'extracted_concepts', COUNT(*) FROM extracted_concepts
+UNION ALL SELECT 'idea_feedback', COUNT(*) FROM idea_feedback
+UNION ALL SELECT 'domain_connections', COUNT(*) FROM domain_connections
+UNION ALL SELECT 'methodology_fusions', COUNT(*) FROM methodology_fusions;
