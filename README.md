@@ -1,4 +1,3 @@
-# EvideciaFlow
 # EvidenciaFlow - AI-Powered Research Platform 🧬📊
 
 **Transform your academic research with AI-powered tools designed for scholars, researchers, and students.**
@@ -43,45 +42,6 @@ EvidenciaFlow is a comprehensive platform offering 6 specialized AI features to 
 - Internal consistency analysis
 - Argument flow validation
 
-## 🚀 Quick Start
-
-### Prerequisites
-- Python 3.8+
-- Groq API key (free tier available)
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/EvidenciaFlow.git
-   cd EvidenciaFlow
-   ```
-
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Set up environment variables**
-   ```bash
-   # Create .env file
-   echo "GROQ_API_KEY=your_groq_api_key_here" > .env
-   ```
-
-4. **Initialize databases**
-   ```bash
-   python -c "from backend.utils.database_helper import DatabaseHelper; DatabaseHelper.initialize_all_databases()"
-   ```
-
-5. **Run the application**
-   ```bash
-   python app.py
-   ```
-
-6. **Open your browser**
-   ```
-   http://localhost:5000
-   ```
 
 ## 🛠️ Technology Stack
 
@@ -171,56 +131,6 @@ The platform uses SQLite databases for:
 # Provides specific recommendations for fixes
 ```
 
-## 🔐 Privacy & Data
-
-- **Anonymous-friendly**: Works without registration
-- **Minimal data storage**: Only essential processing data
-- **Session-based**: Anonymous users get temporary sessions
-- **No personal data**: Papers processed but not permanently stored
-- **Optional accounts**: Register for history and preferences
-
-## 🤝 Contributing
-
-We welcome contributions! Here's how to get started:
-
-1. **Fork the repository**
-2. **Create a feature branch**
-   ```bash
-   git checkout -b feature/amazing-feature
-   ```
-3. **Make your changes**
-4. **Add tests** for new features
-5. **Commit with clear messages**
-   ```bash
-   git commit -m "Add amazing feature for citation analysis"
-   ```
-6. **Push to your branch**
-   ```bash
-   git push origin feature/amazing-feature
-   ```
-7. **Open a Pull Request**
-
-### Development Setup
-```bash
-# Install development dependencies
-pip install -r requirements.txt
-
-# Run tests
-pytest
-
-# Run with debug mode
-python app.py --debug
-```
-
-## 📈 Roadmap
-
-- [ ] **Advanced Figure Analysis**: 3D plot optimization, vector graphics
-- [ ] **Multi-language Support**: Papers in Spanish, French, German
-- [ ] **Collaboration Features**: Team paper reviews, shared workspaces  
-- [ ] **API Integration**: Connect with Mendeley, Zotero, EndNote
-- [ ] **Advanced AI Models**: GPT-4, Claude integration options
-- [ ] **Mobile App**: iOS and Android companion apps
-
 ## 🐛 Troubleshooting
 
 ### Common Issues
@@ -250,22 +160,18 @@ python -c "from backend.utils.database_helper import DatabaseHelper; DatabaseHel
 # Verify Groq API key is valid
 ```
 
-## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - **Groq** for fast AI inference
 - **Llama 3** models for academic writing capabilities
 - **Flask** community for web framework
 - **Academic community** for feedback and testing
 
-## 📞 Support
+##  Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/EvidenciaFlow/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/EvidenciaFlow/discussions)
-- **Email**: support@evidenciaflow.com
+- **Email**: mandukya8@gmail.com
 
 ## ⭐ Star History
 
