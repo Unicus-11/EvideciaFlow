@@ -20,7 +20,14 @@ from backend.contradiction_detector_handler import ContradictionDetectorHandler
 # Note: CitationContextHandler not needed since we're using CitationContextAnalyzer directly
 
 # Import utilities - UPDATED PATH
-from backend.utils.database_helper import DatabaseHelper
+try:
+    from backend.utils.database_helper import DatabaseHelper
+except ImportError:
+    print("Warning: DatabaseHelper not found, using dummy class")
+    class DatabaseHelper:
+        def create_anonymous_session(self, user_id): pass
+        def get_all_journals(self): return []
+        def get_user_activity(self, user_id): return []
 
 app = Flask(__name__, template_folder='../frontend/templates', static_folder='../frontend/static')
 app.secret_key = 'research_platform_prototype_key_2024'  # Change in production
