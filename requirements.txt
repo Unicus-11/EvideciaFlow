@@ -1,0 +1,25 @@
+# Core Flask dependencies
+Flask==2.3.3
+Flask-CORS==4.0.0
+Werkzeug==2.3.7
+
+# AI libraries
+groq==0.4.1
+
+# File processing libraries
+PyPDF2==3.0.1
+pdfplumber==0.10.3
+python-docx==0.8.11
+mammoth==1.6.0
+
+# Image processing
+Pillow==10.1.0
+
+# Standard library imports (no installation needed)
+# - os, sys, uuid, datetime, json, traceback
+# - time, typing, logging, hashlib, pathlib
+# - importlib, re
+
+# Optional: Database (if you add database functionality later)
+# sqlite3  # Built into Python
+# sqlalchemy==2.0.23
