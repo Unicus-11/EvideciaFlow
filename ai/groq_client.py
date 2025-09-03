@@ -274,3 +274,4 @@ class GroqClient:
                 'status': 'unhealthy',
                 'error': str(e)
             }
+
