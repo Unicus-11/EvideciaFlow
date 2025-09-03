@@ -1,632 +1,292 @@
-{
-  "journals": {
-    "Nature": {
-      "type": "journal",
-      "category": "international",
-      "word_limits": {
-        "abstract": 150,
-        "main_text": 3000,
-        "methods": 1500,
-        "total": 4500
-      },
-      "language": "British English",
-      "citation_style": "Nature format",
-      "structure_requirements": {
-        "title": {
-          "max_characters": 90,
-          "notes": "Should be accessible to broad readership"
-        },
-        "abstract": {
-          "max_words": 150,
-          "structure": "Background, Methods, Results, Conclusions",
-          "notes": "No references in abstract"
-        },
-        "sections": [
-          "Introduction",
-          "Results", 
-          "Discussion",
-          "Methods",
-          "Acknowledgements",
-          "References"
-        ]
-      },
-      "formatting_rules": {
-        "font": "Times New Roman, 12pt",
-        "spacing": "Double spaced",
-        "margins": "2.5cm all sides",
-        "figures": "300 DPI minimum",
-        "line_numbers": "required"
-      },
-      "style_guidelines": {
-        "tense": {
-          "methods": "past tense",
-          "results": "past tense", 
-          "established_facts": "present tense"
-        },
-        "voice": "active voice preferred",
-        "person": "avoid first person (we, our)",
-        "spelling": "British (colour, realise, centre)",
-        "numbers": "spell out one to nine, use numerals for 10+"
-      },
-      "special_requirements": [
-        "Significance statement required",
-        "Data availability statement",
-        "Author contributions section",
-        "Competing interests declaration"
-      ]
-    },
+-- journal_requirements.db - Comprehensive database for all publication requirements
 
-    "Science": {
-      "type": "journal", 
-      "category": "international",
-      "word_limits": {
-        "abstract": 125,
-        "main_text": 2500,
-        "total": 3500
-      },
-      "language": "American English",
-      "citation_style": "Science format",
-      "structure_requirements": {
-        "title": {
-          "max_words": 15,
-          "notes": "Concise and impactful"
-        },
-        "abstract": {
-          "max_words": 125,
-          "structure": "One paragraph, structured summary"
-        },
-        "sections": [
-          "One-sentence summary",
-          "Abstract",
-          "Main text",
-          "Materials and Methods", 
-          "References and Notes"
-        ]
-      },
-      "formatting_rules": {
-        "font": "Times New Roman, 12pt",
-        "spacing": "Double spaced",
-        "margins": "2.5cm all sides",
-        "references": "numbered sequentially"
-      },
-      "style_guidelines": {
-        "tense": "past tense for experimental work",
-        "voice": "active voice",
-        "person": "third person preferred",
-        "spelling": "American (color, realize, center)",
-        "emphasis": "broader significance emphasized"
-      },
-      "special_requirements": [
-        "One-sentence summary (max 125 characters)",
-        "Data and materials availability",
-        "Supplementary materials section"
-      ]
-    },
+-- Main publications table
+CREATE TABLE publications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL, -- 'journal', 'conference', 'thesis', 'preprint', 'custom'
+    category TEXT, -- 'international', 'subject_specific', 'computer_science', 'medicine', 'academic'
+    language TEXT NOT NULL,
+    citation_style TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-    "Cell": {
-      "type": "journal",
-      "category": "international", 
-      "word_limits": {
-        "abstract": 150,
-        "main_text": 4000,
-        "significance": 120
-      },
-      "language": "American English",
-      "citation_style": "Cell format",
-      "structure_requirements": {
-        "sections": [
-          "Title",
-          "Summary", 
-          "Significance",
-          "Introduction",
-          "Results",
-          "Discussion", 
-          "Experimental Procedures",
-          "References"
-        ]
-      },
-      "style_guidelines": {
-        "spelling": "American English",
-        "figures": "maximum 8 main figures",
-        "references": "maximum 80 references"
-      },
-      "special_requirements": [
-        "Significance statement (120 words)",
-        "Graphical abstract required",
-        "eTOC blurb (40-50 words)"
-      ]
-    },
+-- Word limits for each publication
+CREATE TABLE word_limits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    publication_id INTEGER NOT NULL,
+    abstract INTEGER,
+    main_text INTEGER,
+    methods INTEGER,
+    total INTEGER,
+    significance INTEGER,
+    summary INTEGER,
+    keywords INTEGER,
+    brief_report INTEGER,
+    short_paper INTEGER,
+    chapter_limit INTEGER, -- For thesis
+    FOREIGN KEY (publication_id) REFERENCES publications(id)
+);
 
-    "The Lancet": {
-      "type": "journal",
-      "category": "international",
-      "word_limits": {
-        "abstract": 300,
-        "main_text": 4500,
-        "summary": 100
-      },
-      "language": "British English",
-      "citation_style": "Vancouver",
-      "structure_requirements": {
-        "abstract": {
-          "structure": "Background, Methods, Findings, Interpretation",
-          "max_words": 300
-        },
-        "sections": [
-          "Summary",
-          "Introduction", 
-          "Methods",
-          "Results",
-          "Discussion",
-          "References"
-        ]
-      },
-      "style_guidelines": {
-        "spelling": "British English",
-        "person": "first person acceptable",
-        "funding": "funding statement required"
-      },
-      "special_requirements": [
-        "Research in context panel",
-        "Role of funding source statement",
-        "Ethics approval statement"
-      ]
-    },
+-- Structure requirements
+CREATE TABLE structure_requirements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    publication_id INTEGER NOT NULL,
+    title_max_characters INTEGER,
+    title_max_words INTEGER,
+    title_notes TEXT,
+    abstract_max_words INTEGER,
+    abstract_structure TEXT,
+    abstract_notes TEXT,
+    sections TEXT, -- JSON array of required sections
+    FOREIGN KEY (publication_id) REFERENCES publications(id)
+);
 
-    "New England Journal of Medicine": {
-      "type": "journal",
-      "category": "international",
-      "word_limits": {
-        "abstract": 250,
-        "main_text": 2700,
-        "brief_report": 1200
-      },
-      "language": "American English", 
-      "citation_style": "NEJM format",
-      "structure_requirements": {
-        "abstract": {
-          "structure": "Background, Methods, Results, Conclusions",
-          "max_words": 250
-        },
-        "sections": [
-          "Abstract",
-          "Introduction",
-          "Methods", 
-          "Results",
-          "Discussion",
-          "References"
-        ]
-      },
-      "style_guidelines": {
-        "spelling": "American English",
-        "statistics": "statistical methods must be detailed",
-        "clinical_trials": "registration number required"
-      }
-    },
+-- Formatting rules
+CREATE TABLE formatting_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    publication_id INTEGER NOT NULL,
+    font TEXT,
+    spacing TEXT,
+    margins TEXT,
+    figures TEXT,
+    line_numbers BOOLEAN DEFAULT FALSE,
+    references TEXT,
+    equations TEXT,
+    physics_notation TEXT,
+    protein_names TEXT,
+    FOREIGN KEY (publication_id) REFERENCES publications(id)
+);
 
-    "Journal of Biological Chemistry": {
-      "type": "journal",
-      "category": "subject_specific",
-      "word_limits": {
-        "abstract": 250,
-        "main_text": 6000
-      },
-      "language": "American English",
-      "citation_style": "JBC format", 
-      "structure_requirements": {
-        "sections": [
-          "Abstract",
-          "Introduction",
-          "Results",
-          "Discussion",
-          "Experimental Procedures", 
-          "References"
-        ]
-      },
-      "style_guidelines": {
-        "spelling": "American English",
-        "protein_names": "italicized gene names",
-        "methods": "detailed experimental procedures required"
-      }
-    },
+-- Style guidelines
+CREATE TABLE style_guidelines (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    publication_id INTEGER NOT NULL,
+    methods_tense TEXT,
+    results_tense TEXT,
+    established_facts_tense TEXT,
+    voice TEXT,
+    person TEXT,
+    spelling TEXT,
+    numbers TEXT,
+    emphasis TEXT,
+    statistics TEXT,
+    clinical_trials TEXT,
+    accessibility TEXT,
+    human_subjects TEXT,
+    datasets TEXT,
+    reproducibility TEXT,
+    ethics TEXT,
+    clinical TEXT,
+    FOREIGN KEY (publication_id) REFERENCES publications(id)
+);
 
-    "IEEE Transactions": {
-      "type": "journal",
-      "category": "subject_specific", 
-      "word_limits": {
-        "abstract": 200,
-        "main_text": 8000,
-        "keywords": 5
-      },
-      "language": "American English",
-      "citation_style": "IEEE format",
-      "structure_requirements": {
-        "sections": [
-          "Abstract",
-          "Index Terms",
-          "Introduction",
-          "Main Content",
-          "Conclusion", 
-          "References"
-        ]
-      },
-      "style_guidelines": {
-        "spelling": "American English",
-        "equations": "numbered sequentially",
-        "figures": "referenced in text order"
-      },
-      "special_requirements": [
-        "Index terms (5-10 keywords)",
-        "Copyright statement",
-        "Biographies of authors"
-      ]
-    },
+-- Special requirements
+CREATE TABLE special_requirements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    publication_id INTEGER NOT NULL,
+    requirement TEXT NOT NULL,
+    description TEXT,
+    FOREIGN KEY (publication_id) REFERENCES publications(id)
+);
 
-    "Physical Review Letters": {
-      "type": "journal",
-      "category": "subject_specific",
-      "word_limits": {
-        "abstract": 600,
-        "main_text": 3750,
-        "total": 4500
-      },
-      "language": "American English",
-      "citation_style": "Physical Review format",
-      "structure_requirements": {
-        "sections": [
-          "Abstract",
-          "Main text (continuous)",
-          "Acknowledgments",
-          "References"
-        ]
-      },
-      "style_guidelines": {
-        "spelling": "American English",
-        "equations": "displayed equations numbered",
-        "physics_notation": "standard physics notation required"
-      }
-    }
-  },
+-- Language variants
+CREATE TABLE language_variants (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    variant_name TEXT NOT NULL,
+    color TEXT,
+    realize TEXT,
+    center TEXT,
+    analyze TEXT,
+    organization TEXT,
+    quotations TEXT,
+    oxford_comma TEXT,
+    notes TEXT
+);
 
-  "conferences": {
-    "ACM CHI": {
-      "type": "conference",
-      "category": "computer_science",
-      "word_limits": {
-        "abstract": 150,
-        "main_text": 5000,
-        "short_paper": 2500
-      },
-      "language": "American English",
-      "citation_style": "ACM format",
-      "structure_requirements": {
-        "sections": [
-          "Abstract",
-          "Author Keywords",
-          "CCS Concepts",
-          "Introduction",
-          "Related Work",
-          "Main Content",
-          "Conclusion",
-          "Acknowledgments",
-          "References"
-        ]
-      },
-      "style_guidelines": {
-        "spelling": "American English",
-        "accessibility": "accessibility considerations required",
-        "human_subjects": "ethics approval for human studies"
-      },
-      "special_requirements": [
-        "CCS concepts classification",
-        "Author keywords (3-5)",
-        "Accessibility statement if applicable"
-      ]
-    },
+-- Citation styles
+CREATE TABLE citation_styles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    style_name TEXT NOT NULL,
+    type TEXT, -- 'numbered', 'author-date', 'author-page'
+    example TEXT,
+    notes TEXT
+);
 
-    "IEEE ICCV": {
-      "type": "conference",
-      "category": "computer_science",
-      "word_limits": {
-        "abstract": 200,
-        "main_text": 8000
-      },
-      "language": "American English", 
-      "citation_style": "IEEE format",
-      "structure_requirements": {
-        "sections": [
-          "Abstract",
-          "Introduction",
-          "Related Work",
-          "Method/Approach",
-          "Experiments",
-          "Conclusion",
-          "References"
-        ]
-      },
-      "style_guidelines": {
-        "spelling": "American English",
-        "figures": "high quality figures essential",
-        "datasets": "dataset details required"
-      }
-    },
+-- Regional focuses
+CREATE TABLE regional_focuses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    region_name TEXT NOT NULL,
+    target_audience TEXT,
+    language_preference TEXT,
+    cultural_considerations TEXT
+);
 
-    "NeurIPS": {
-      "type": "conference",
-      "category": "computer_science",
-      "word_limits": {
-        "abstract": 250,
-        "main_text": 9000
-      },
-      "language": "American English",
-      "citation_style": "NeurIPS format",
-      "structure_requirements": {
-        "sections": [
-          "Abstract",
-          "Introduction", 
-          "Background/Related Work",
-          "Method",
-          "Experiments",
-          "Conclusion",
-          "References",
-          "Appendix (supplementary)"
-        ]
-      },
-      "style_guidelines": {
-        "spelling": "American English",
-        "reproducibility": "code and data availability expected",
-        "ethics": "broader impact statement required"
-      },
-      "special_requirements": [
-        "Broader impact statement",
-        "Reproducibility checklist",
-        "Code availability statement"
-      ]
-    },
+-- Custom user requirements
+CREATE TABLE custom_requirements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    session_id TEXT,
+    journal_name TEXT,
+    language_variant TEXT,
+    regional_focus TEXT,
+    abstract_word_limit INTEGER,
+    total_word_limit INTEGER,
+    citation_style TEXT,
+    section_requirements TEXT,
+    custom_text TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
 
-    "American Medical Association": {
-      "type": "conference",
-      "category": "medicine",
-      "word_limits": {
-        "abstract": 300,
-        "main_text": 2500
-      },
-      "language": "American English",
-      "citation_style": "AMA format",
-      "structure_requirements": {
-        "sections": [
-          "Abstract",
-          "Introduction",
-          "Methods",
-          "Results", 
-          "Discussion",
-          "Conclusions",
-          "References"
-        ]
-      },
-      "style_guidelines": {
-        "spelling": "American English",
-        "statistics": "detailed statistical methods",
-        "clinical": "patient consent statements"
-      }
-    }
-  },
+-- Insert Publications Data
+INSERT INTO publications (name, type, category, language, citation_style) VALUES
 
-  "preprint_servers": {
-    "arXiv": {
-      "type": "preprint",
-      "word_limits": {
-        "abstract": 1920,
-        "main_text": "unlimited"
-      },
-      "language": "International English",
-      "citation_style": "flexible",
-      "style_guidelines": {
-        "formatting": "LaTeX preferred",
-        "accessibility": "screen reader friendly"
-      }
-    },
+-- Journals
+('Nature', 'journal', 'international', 'British English', 'Nature format'),
+('Science', 'journal', 'international', 'American English', 'Science format'),
+('Cell', 'journal', 'international', 'American English', 'Cell format'),
+('The Lancet', 'journal', 'international', 'British English', 'Vancouver'),
+('New England Journal of Medicine', 'journal', 'international', 'American English', 'NEJM format'),
+('Journal of Biological Chemistry', 'journal', 'subject_specific', 'American English', 'JBC format'),
+('IEEE Transactions', 'journal', 'subject_specific', 'American English', 'IEEE format'),
+('Physical Review Letters', 'journal', 'subject_specific', 'American English', 'Physical Review format'),
 
-    "bioRxiv": {
-      "type": "preprint", 
-      "word_limits": {
-        "abstract": 300,
-        "main_text": "unlimited"
-      },
-      "language": "International English",
-      "citation_style": "flexible",
-      "special_requirements": [
-        "Ethics statement for human subjects",
-        "Data availability statement"
-      ]
-    }
-  },
+-- Conferences
+('ACM CHI', 'conference', 'computer_science', 'American English', 'ACM format'),
+('IEEE ICCV', 'conference', 'computer_science', 'American English', 'IEEE format'),
+('NeurIPS', 'conference', 'computer_science', 'American English', 'NeurIPS format'),
+('American Medical Association', 'conference', 'medicine', 'American English', 'AMA format'),
 
-  "language_variants": {
-    "American English": {
-      "spellings": {
-        "color": "color",
-        "realize": "realize", 
-        "center": "center",
-        "analyze": "analyze",
-        "organization": "organization"
-      },
-      "punctuation": {
-        "quotations": "\"inside punctuation.\"",
-        "oxford_comma": "required"
-      }
-    },
+-- Thesis (from HTML)
+('Master''s Thesis', 'thesis', 'academic', 'Institution dependent', 'Institution specific'),
+('PhD Thesis', 'thesis', 'academic', 'Institution dependent', 'Institution specific'),
+('Institution-Specific', 'thesis', 'academic', 'Institution dependent', 'Institution specific'),
 
-    "British English": {
-      "spellings": {
-        "color": "colour",
-        "realize": "realise",
-        "center": "centre", 
-        "analyze": "analyse",
-        "organization": "organisation"
-      },
-      "punctuation": {
-        "quotations": "\"outside punctuation\".",
-        "oxford_comma": "optional"
-      }
-    },
+-- Preprints
+('arXiv', 'preprint', 'general', 'International English', 'flexible'),
+('bioRxiv', 'preprint', 'biological', 'International English', 'flexible');
 
-    "International English": {
-      "notes": "Mix of conventions, generally more flexible",
-      "preference": "clarity over strict regional rules"
-    }
-  },
+-- Insert Word Limits
+INSERT INTO word_limits (publication_id, abstract, main_text, methods, total, significance, summary, keywords, brief_report, short_paper, chapter_limit) VALUES
 
-  "citation_styles": {
-    "Nature format": {
-      "type": "numbered",
-      "example": "Smith, J. Nature 123, 456-789 (2023).",
-      "notes": "Abbreviated journal names, no issue numbers"
-    },
+-- Journals
+(1, 150, 3000, 1500, 4500, NULL, NULL, NULL, NULL, NULL, NULL), -- Nature
+(2, 125, 2500, NULL, 3500, NULL, NULL, NULL, NULL, NULL, NULL), -- Science
+(3, 150, 4000, NULL, NULL, 120, NULL, NULL, NULL, NULL, NULL), -- Cell
+(4, 300, 4500, NULL, NULL, NULL, 100, NULL, NULL, NULL, NULL), -- The Lancet
+(5, 250, 2700, NULL, NULL, NULL, NULL, NULL, 1200, NULL, NULL), -- NEJM
+(6, 250, 6000, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL), -- JBC
+(7, 200, 8000, NULL, NULL, NULL, NULL, 5, NULL, NULL, NULL), -- IEEE
+(8, 600, 3750, NULL, 4500, NULL, NULL, NULL, NULL, NULL, NULL), -- PRL
 
-    "Science format": {
-      "type": "numbered", 
-      "example": "J. Smith, Science 123, 456 (2023).",
-      "notes": "Very abbreviated, page numbers without dash"
-    },
+-- Conferences
+(9, 150, 5000, NULL, NULL, NULL, NULL, NULL, NULL, 2500, NULL), -- ACM CHI
+(10, 200, 8000, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL), -- IEEE ICCV
+(11, 250, 9000, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL), -- NeurIPS
+(12, 300, 2500, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL), -- AMA
 
-    "APA": {
-      "type": "author-date",
-      "example": "Smith, J. (2023). Title. Journal Name, 123(4), 456-789.",
-      "notes": "Full journal names"
-    },
+-- Thesis (from HTML requirements)
+(13, 350, 15000, NULL, 20000, NULL, NULL, NULL, NULL, NULL, 6), -- Master's
+(14, 500, 80000, NULL, 100000, NULL, NULL, NULL, NULL, NULL, 10), -- PhD
+(15, 400, 50000, NULL, 60000, NULL, NULL, NULL, NULL, NULL, 8), -- Institution-Specific
 
-    "IEEE": {
-      "type": "numbered",
-      "example": "[1] J. Smith, \"Title,\" Journal Name, vol. 123, no. 4, pp. 456-789, 2023.",
-      "notes": "Quoted article titles"
-    },
+-- Preprints
+(16, 1920, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL), -- arXiv
+(17, 300, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL); -- bioRxiv
 
-    "MLA": {
-      "type": "author-page",
-      "example": "Smith, John. \"Title.\" Journal Name, vol. 123, no. 4, 2023, pp. 456-789.",
-      "notes": "Full names, quoted titles"
-    },
+-- Insert Structure Requirements
+INSERT INTO structure_requirements (publication_id, title_max_characters, title_max_words, title_notes, abstract_max_words, abstract_structure, abstract_notes, sections) VALUES
 
-    "Vancouver": {
-      "type": "numbered",
-      "example": "Smith J. Title. Journal Name. 2023;123(4):456-89.",
-      "notes": "Medical journals standard"
-    }
-  },
+-- Nature
+(1, 90, NULL, 'Should be accessible to broad readership', 150, 'Background, Methods, Results, Conclusions', 'No references in abstract', '["Introduction", "Results", "Discussion", "Methods", "Acknowledgements", "References"]'),
 
-  "regional_focuses": {
-    "International": {
-      "target_audience": "global research community",
-      "language_preference": "clear, accessible English",
-      "cultural_considerations": "avoid region-specific references"
-    },
+-- Science
+(2, NULL, 15, 'Concise and impactful', 125, 'One paragraph, structured summary', NULL, '["One-sentence summary", "Abstract", "Main text", "Materials and Methods", "References and Notes"]'),
 
-    "USA/Canada": {
-      "target_audience": "North American research community", 
-      "language_preference": "American English",
-      "cultural_considerations": "US regulations and standards referenced"
-    },
+-- Cell
+(3, NULL, NULL, NULL, 150, NULL, NULL, '["Title", "Summary", "Significance", "Introduction", "Results", "Discussion", "Experimental Procedures", "References"]'),
 
-    "UK/Europe": {
-      "target_audience": "European research community",
-      "language_preference": "British English", 
-      "cultural_considerations": "EU regulations and standards"
-    },
+-- The Lancet
+(4, NULL, NULL, NULL, 300, 'Background, Methods, Findings, Interpretation', NULL, '["Summary", "Introduction", "Methods", "Results", "Discussion", "References"]'),
 
-    "Asia-Pacific": {
-      "target_audience": "Asian research community",
-      "language_preference": "International English",
-      "cultural_considerations": "regional research priorities"
-    }
-  },
+-- NEJM
+(5, NULL, NULL, NULL, 250, 'Background, Methods, Results, Conclusions', NULL, '["Abstract", "Introduction", "Methods", "Results", "Discussion", "References"]'),
 
-  "common_rewriting_patterns": {
-    "formality_adjustments": {
-      "informal_to_formal": {
-        "contractions": "don't → do not, can't → cannot",
-        "colloquialisms": "a lot of → numerous, got → obtained",
-        "personal_pronouns": "we found → the results indicate"
-      }
-    },
+-- Master's Thesis (from HTML)
+(13, NULL, NULL, 'Clear and descriptive', 350, 'Background, Objectives, Methods, Results, Conclusions', 'Comprehensive summary', '["Title Page", "Abstract", "Table of Contents", "Introduction", "Literature Review", "Methodology", "Results", "Discussion", "Conclusion", "References", "Appendices"]'),
 
-    "structure_transformations": {
-      "IMRAD_to_Nature": {
-        "combine": "Results and Discussion often combined",
-        "methods": "Methods moved to end"
-      },
-      
-      "conference_to_journal": {
-        "expand": "Add more literature review",
-        "detail": "Increase methodological detail",
-        "significance": "Emphasize broader impact"
-      }
-    },
+-- PhD Thesis (from HTML)
+(14, NULL, NULL, 'Original contribution to knowledge', 500, 'Background, Objectives, Methods, Results, Conclusions, Significance', 'Detailed summary of contribution', '["Title Page", "Abstract", "Table of Contents", "Introduction", "Literature Review", "Methodology", "Results", "Discussion", "Conclusion", "References", "Appendices"]'),
 
-    "language_standardization": {
-      "american_to_british": {
-        "systematic_changes": [
-          "ize → ise (realize → realise)",
-          "or → our (color → colour)", 
-          "er → re (center → centre)",
-          "single l → double l (modeling → modelling)"
-        ]
-      },
+-- Institution-Specific (from HTML)
+(15, NULL, NULL, 'Follow institution guidelines', 400, 'As per institution requirements', 'Check specific formatting guide', '["As per institution requirements"]');
 
-      "british_to_american": {
-        "systematic_changes": [
-          "ise → ize (realise → realize)",
-          "our → or (colour → color)",
-          "re → er (centre → center)", 
-          "double l → single l (modelling → modeling)"
-        ]
-      }
-    }
-  },
+-- Insert Language Variants
+INSERT INTO language_variants (variant_name, color, realize, center, analyze, organization, quotations, oxford_comma, notes) VALUES
+('American English', 'color', 'realize', 'center', 'analyze', 'organization', '"inside punctuation."', 'required', NULL),
+('British English', 'colour', 'realise', 'centre', 'analyse', 'organisation', '"outside punctuation".', 'optional', NULL),
+('International English', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Mix of conventions, generally more flexible');
 
-  "compliance_checkers": {
-    "word_count": {
-      "abstract": "count words excluding references",
-      "main_text": "exclude abstract, references, acknowledgments",
-      "total": "entire document including everything"
-    },
+-- Insert Citation Styles
+INSERT INTO citation_styles (style_name, type, example, notes) VALUES
+('Nature format', 'numbered', 'Smith, J. Nature 123, 456-789 (2023).', 'Abbreviated journal names, no issue numbers'),
+('Science format', 'numbered', 'J. Smith, Science 123, 456 (2023).', 'Very abbreviated, page numbers without dash'),
+('APA', 'author-date', 'Smith, J. (2023). Title. Journal Name, 123(4), 456-789.', 'Full journal names'),
+('IEEE format', 'numbered', '[1] J. Smith, "Title," Journal Name, vol. 123, no. 4, pp. 456-789, 2023.', 'Quoted article titles'),
+('MLA', 'author-page', 'Smith, John. "Title." Journal Name, vol. 123, no. 4, 2023, pp. 456-789.', 'Full names, quoted titles'),
+('Vancouver', 'numbered', 'Smith J. Title. Journal Name. 2023;123(4):456-89.', 'Medical journals standard'),
+('Institution specific', 'varies', 'As per institution guidelines', 'Check specific thesis formatting requirements');
 
-    "language_detection": {
-      "indicators": [
-        "spelling patterns (colour vs color)",
-        "vocabulary choices (lift vs elevator)",
-        "punctuation styles"
-      ]
-    },
+-- Insert Regional Focuses
+INSERT INTO regional_focuses (region_name, target_audience, language_preference, cultural_considerations) VALUES
+('International', 'global research community', 'clear, accessible English', 'avoid region-specific references'),
+('USA/Canada', 'North American research community', 'American English', 'US regulations and standards referenced'),
+('UK/Europe', 'European research community', 'British English', 'EU regulations and standards'),
+('Asia-Pacific', 'Asian research community', 'International English', 'regional research priorities');
 
-    "structure_validation": {
-      "required_sections": "check all required sections present",
-      "section_order": "validate proper ordering",
-      "formatting": "check font, spacing, margins"
-    }
-  },
+-- Insert Special Requirements
+INSERT INTO special_requirements (publication_id, requirement, description) VALUES
 
-  "ai_prompting_templates": {
-    "basic_rewrite": "Rewrite this research paper for {journal_name}. Follow {language} conventions, use {citation_style}, maintain {word_limit} word limit for abstract. Original text: {original_text}",
+-- Nature
+(1, 'Significance statement', 'Required for all submissions'),
+(1, 'Data availability statement', 'Must specify how data can be accessed'),
+(1, 'Author contributions section', 'Detail each author''s contribution'),
+(1, 'Competing interests declaration', 'Financial and non-financial conflicts'),
 
-    "detailed_rewrite": "Rewrite this research paper for submission to {journal_name}. Requirements: 1) Use {language} spelling and grammar 2) Abstract maximum {abstract_limit} words 3) Main text maximum {main_text_limit} words 4) Follow {citation_style} citation format 5) Structure: {required_sections} 6) Tone: {formality_level} 7) Special requirements: {special_notes}. Original text: {original_text}",
+-- Science
+(2, 'One-sentence summary', 'Maximum 125 characters'),
+(2, 'Data and materials availability', 'Specify access to data and materials'),
+(2, 'Supplementary materials section', 'Additional supporting information'),
 
-    "style_only": "Convert this text from {source_language} to {target_language} while maintaining all content and meaning. Focus only on spelling, grammar, and style conventions: {original_text}"
-  },
+-- Cell
+(3, 'Significance statement', '120 words maximum'),
+(3, 'Graphical abstract required', 'Visual summary of key findings'),
+(3, 'eTOC blurb', '40-50 words for table of contents'),
 
-  "quality_metrics": {
-    "compliance_score": {
-      "word_limits": 25,
-      "language_consistency": 25, 
-      "structure_adherence": 25,
-      "style_guidelines": 25
-    },
+-- Master's Thesis (from HTML requirements)
+(13, 'Ethics approval', 'If human subjects or animals involved'),
+(13, 'Institutional formatting', 'Follow department/university guidelines'),
+(13, 'Thesis defense', 'Oral defense typically required'),
 
-    "readability_metrics": [
-      "Flesch-Kincaid reading level",
-      "Average sentence length", 
-      "Technical term density",
-      "Clarity score"
-    ]
-  }
-}
+-- PhD Thesis (from HTML requirements)
+(14, 'Original contribution', 'Demonstrate significant original research'),
+(14, 'Ethics approval', 'Comprehensive ethics review if applicable'),
+(14, 'Publication ready chapters', 'Chapters should be publication quality'),
+
+-- Institution-Specific (from HTML requirements)
+(15, 'Institution guidelines', 'Follow specific university/college requirements'),
+(15, 'Format approval', 'May require format pre-approval'),
+(15, 'Binding requirements', 'Physical thesis binding specifications');
+
+-- Create indexes for better performance
+CREATE INDEX idx_publications_type ON publications(type);
+CREATE INDEX idx_publications_category ON publications(category);
+CREATE INDEX idx_word_limits_pub ON word_limits(publication_id);
+CREATE INDEX idx_structure_req_pub ON structure_requirements(publication_id);
+CREATE INDEX idx_formatting_rules_pub ON formatting_rules(publication_id);
+CREATE INDEX idx_style_guidelines_pub ON style_guidelines(publication_id);
+CREATE INDEX idx_special_req_pub ON special_requirements(publication_id);
+CREATE INDEX idx_custom_req_user ON custom_requirements(user_id);
+CREATE INDEX idx_custom_req_session ON custom_requirements(session_id);
