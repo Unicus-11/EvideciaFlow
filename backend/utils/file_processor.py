@@ -1,8 +1,12 @@
-# PDF processing
 from typing import Tuple, List, Dict, Any
 from pathlib import Path
+import zipfile
 import hashlib
 import logging
+import re
+import mimetypes
+import shutil
+import os
 from datetime import datetime
 
 # Image processing
@@ -19,6 +23,14 @@ try:
     DOCX_AVAILABLE = True
 except ImportError:
     DOCX_AVAILABLE = False
+
+# PDF processing
+try:
+    import PyPDF2
+    import pdfplumber
+    PDF_AVAILABLE = True
+except ImportError:
+    PDF_AVAILABLE = False
 
 
 class FileProcessor:
@@ -50,6 +62,24 @@ class FileProcessor:
             'figure': 100 * 1024 * 1024,   # 100MB
             'protocol': 25 * 1024 * 1024   # 25MB
         }
+    
+    def clean_filename(self, filename: str) -> str:
+        """Clean filename for safe storage"""
+        if not filename:
+            return "unnamed_file"
+        
+        # Remove or replace problematic characters
+        filename = re.sub(r'[<>:"/\\|?*]', '', filename)
+        filename = re.sub(r'[^\w\-_\. ]', '', filename)
+        filename = re.sub(r' +', '_', filename)
+        filename = filename.strip('._-')
+        
+        # Ensure filename isn't too long
+        name, ext = os.path.splitext(filename)
+        if len(name) > 100:
+            name = name[:100]
+        
+        return name + ext
     
     def validate_file(self, file_data: bytes, filename: str, file_type: str = 'paper') -> Tuple[bool, List[str]]:
         """Validate uploaded file"""
@@ -307,7 +337,7 @@ class FileProcessor:
                 return True, full_text, metadata
                 
         except Exception as e2:
-            return False, f"DOCX extraction failed: {str(e2)}", {}
+                            return False, f"DOCX extraction failed: {str(e2)}", {}
     
     def analyze_figure(self, file_path: str) -> Tuple[bool, Dict[str, Any]]:
         """Analyze figure specifications and quality"""
@@ -490,46 +520,19 @@ class FileProcessor:
         compliance = {
             'journal': target_journal,
             'meets_dpi': analysis.get('min_dpi', 0) >= req['min_dpi'],
-            'meets_format': analysis.get('format', 'UNKNOWN') in req['preferred_formats'],
-            'meets_file_size': analysis.get('file_size_mb', 0) <= req['max_file_size_mb'],
-            'meets_width': True
+            'meets_format': analysis.get('format', '').upper() in req['preferred_formats'],
+            'meets_size_limit': analysis.get('file_size_mb', 0) <= req['max_file_size_mb'],
+            'meets_width_range': req['min_width_inches'] <= analysis.get('width_inches', 0) <= req['max_width_inches'],
+            'overall_compliant': True
         }
         
-        # Check width requirements if available
-        if 'width_inches' in analysis:
-            width = analysis['width_inches']
-            compliance['meets_width'] = (
-                width >= req['min_width_inches'] and 
-                width <= req['max_width_inches']
-            )
-        
+        # Check overall compliance
         compliance['overall_compliant'] = all([
             compliance['meets_dpi'],
-            compliance['meets_format'],
-            compliance['meets_file_size'],
-            compliance['meets_width']
+            compliance['meets_format'], 
+            compliance['meets_size_limit'],
+            compliance['meets_width_range']
         ])
-        
-        # Generate recommendations
-        recommendations = []
-        if not compliance['meets_dpi']:
-            recommendations.append(f"Increase DPI to at least {req['min_dpi']} (current: {analysis.get('min_dpi', 'unknown')})")
-        
-        if not compliance['meets_format']:
-            recommendations.append(f"Convert to preferred format: {', '.join(req['preferred_formats'])}")
-        
-        if not compliance['meets_file_size']:
-            recommendations.append(f"Reduce file size to under {req['max_file_size_mb']}MB (current: {analysis.get('file_size_mb', 0):.1f}MB)")
-        
-        if not compliance['meets_width'] and 'width_inches' in analysis:
-            width = analysis['width_inches']
-            if width < req['min_width_inches']:
-                recommendations.append(f"Increase width to at least {req['min_width_inches']} inches (current: {width:.1f})")
-            elif width > req['max_width_inches']:
-                recommendations.append(f"Reduce width to under {req['max_width_inches']} inches (current: {width:.1f})")
-        
-        compliance['recommendations'] = recommendations
-        compliance['requirements'] = req
         
         return compliance
     
@@ -539,8 +542,6 @@ class FileProcessor:
         validation = {
             'word_count': len(text.split()),
             'char_count': len(text),
-            'line_count': len(text.splitlines()),
-            'paragraph_count': len([p for p in text.split('\n\n') if p.strip()]),
             'has_abstract': False,
             'has_introduction': False,
             'has_methods': False,
@@ -548,68 +549,59 @@ class FileProcessor:
             'has_discussion': False,
             'has_references': False,
             'citation_count': 0,
-            'issues': [],
-            'sections_found': []
+            'section_headers': [],
+            'issues': []
         }
         
-        # Convert to lowercase for pattern matching
         text_lower = text.lower()
         
-        # Check for common paper sections
-        section_checks = {
-            'has_abstract': ['abstract', 'summary'],
-            'has_introduction': ['introduction', 'background'],
-            'has_methods': ['method', 'methodology', 'materials', 'experimental'],
-            'has_results': ['result', 'findings', 'analysis'],
-            'has_discussion': ['discussion', 'conclusion'],
-            'has_references': ['references', 'bibliography', 'works cited']
-        }
+        # Check for common sections
+        if 'abstract' in text_lower:
+            validation['has_abstract'] = True
         
-        for field, keywords in section_checks.items():
-            if any(keyword in text_lower for keyword in keywords):
-                validation[field] = True
-                validation['sections_found'].append(field.replace('has_', ''))
+        if 'introduction' in text_lower:
+            validation['has_introduction'] = True
         
-        # Count citations
-        import re
-        citation_patterns = [
-            r'\([^)]*\d{4}[^)]*\)',  # (Author, 2023)
-            r'\[[^\]]*\d+[^\]]*\]',  # [1]
-            r'\([^)]*et al[^)]*\)',   # (Smith et al.)
-        ]
+        if any(word in text_lower for word in ['method', 'methodology', 'materials']):
+            validation['has_methods'] = True
         
-        citation_count = 0
-        for pattern in citation_patterns:
-            citation_count += len(re.findall(pattern, text))
-        validation['citation_count'] = citation_count
+        if 'result' in text_lower:
+            validation['has_results'] = True
         
-        # Check for potential issues
+        if 'discussion' in text_lower or 'conclusion' in text_lower:
+            validation['has_discussion'] = True
+        
+        if 'reference' in text_lower or 'bibliography' in text_lower:
+            validation['has_references'] = True
+        
+        # Extract citations
+        citations = self.extract_citations_from_text(text)
+        validation['citation_count'] = len(citations)
+        
+        # Find section headers (simple heuristic)
+        lines = text.split('\n')
+        for line in lines:
+            line = line.strip()
+            if len(line) < 50 and len(line) > 3:
+                if any(keyword in line.lower() for keyword in ['abstract', 'introduction', 'method', 'result', 'discussion', 'conclusion', 'reference']):
+                    validation['section_headers'].append(line)
+        
+        # Identify issues
         if validation['word_count'] < 1000:
-            validation['issues'].append("Very short paper (under 1000 words)")
+            validation['issues'].append(f"Very short paper: {validation['word_count']} words")
         elif validation['word_count'] > 15000:
-            validation['issues'].append("Very long paper (over 15000 words)")
+            validation['issues'].append(f"Very long paper: {validation['word_count']} words")
         
         if not validation['has_abstract']:
-            validation['issues'].append("No abstract section detected")
+            validation['issues'].append("No abstract found")
         
-        if not validation['has_references'] and validation['citation_count'] > 0:
-            validation['issues'].append("Citations found but no references section")
+        if validation['citation_count'] < 5:
+            validation['issues'].append(f"Few citations: {validation['citation_count']}")
         
-        if validation['citation_count'] == 0:
-            validation['issues'].append("No citations detected")
-        
-        # Calculate completeness score
-        structure_score = sum([
-            validation['has_abstract'],
-            validation['has_introduction'], 
-            validation['has_methods'],
-            validation['has_results'],
-            validation['has_discussion'],
-            validation['has_references']
-        ]) / 6 * 100
-        
-        validation['structure_completeness'] = round(structure_score, 1)
-        validation['is_complete_structure'] = structure_score >= 83  # 5/6 sections
+        required_sections = ['has_introduction', 'has_methods', 'has_results', 'has_discussion']
+        missing_sections = [section.replace('has_', '') for section in required_sections if not validation[section]]
+        if missing_sections:
+            validation['issues'].append(f"Missing sections: {', '.join(missing_sections)}")
         
         return validation
     
@@ -617,7 +609,6 @@ class FileProcessor:
         """Extract citations from text using various patterns"""
         
         citations = []
-        import re
         
         # Pattern 1: (Author, Year) format
         pattern1 = r'\(([^)]*(?:\d{4})[^)]*)\)'
@@ -895,274 +886,3 @@ class FileProcessor:
             results.append(result)
         
         return results
-    
-    def get_file_metadata(self, file_path: str) -> Dict[str, Any]:
-        """Get comprehensive file metadata"""
-        
-        file_path = Path(file_path)
-        
-        try:
-            stat = file_path.stat()
-            
-            metadata = {
-                'filename': file_path.name,
-                'file_extension': file_path.suffix.lower(),
-                'file_size_bytes': stat.st_size,
-                'file_size_mb': round(stat.st_size / (1024 * 1024), 2),
-                'created_time': datetime.fromtimestamp(stat.st_ctime).isoformat(),
-                'modified_time': datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                'mime_type': self.get_file_mime_type(str(file_path)),
-                'is_readable': os.access(file_path, os.R_OK),
-                'is_writable': os.access(file_path, os.W_OK)
-            }
-            
-            # Add file-type specific metadata
-            if file_path.suffix.lower() in {'.png', '.jpg', '.jpeg', '.tiff', '.tif', '.pdf'}:
-                analysis_success, analysis = self.analyze_figure(str(file_path))
-                if analysis_success:
-                    metadata['figure_analysis'] = analysis
-            
-            return metadata
-            
-        except Exception as e:
-            self.logger.error(f"Error getting metadata for {file_path}: {e}")
-            return {'error': f"Metadata extraction failed: {str(e)}"}
-    
-    def clean_filename(self, filename: str) -> str:
-        """Clean filename for safe storage"""
-        import re
-        
-        # Remove or replace problematic characters
-        filename = re.sub(r'[<>:"/\\|?*]', '', filename)  # Remove dangerous chars
-        filename = re.sub(r'[^\w\-_\. ]', '', filename)  # Keep only safe chars
-        filename = re.sub(r' +', '_', filename)  # Replace spaces with underscores
-        filename = filename.strip('._-')  # Remove leading/trailing problematic chars
-        
-        # Ensure filename isn't too long
-        name, ext = os.path.splitext(filename)
-        if len(name) > 100:
-            name = name[:100]
-        
-        return name + ext
-    
-    def get_file_mime_type(self, file_path: str) -> str:
-        """Get MIME type of file"""
-        mime_type, _ = mimetypes.guess_type(file_path)
-        return mime_type or 'application/octet-stream'
-    
-    def delete_file(self, file_path: str) -> bool:
-        """Safely delete file"""
-        try:
-            file_path = Path(file_path)
-            if file_path.exists() and file_path.is_file():
-                file_path.unlink()
-                self.logger.info(f"Deleted file: {file_path}")
-                return True
-            else:
-                self.logger.warning(f"File not found for deletion: {file_path}")
-                return False
-        except Exception as e:
-            self.logger.error(f"Error deleting file {file_path}: {e}")
-            return False
-    
-    def cleanup_old_files(self, days_old: int = 7) -> int:
-        """Clean up old uploaded files"""
-        cutoff_time = datetime.now().timestamp() - (days_old * 24 * 3600)
-        deleted_count = 0
-        
-        for subdir in ['papers', 'figures', 'protocols', 'temp', 'thumbnails']:
-            subdir_path = self.upload_path / subdir
-            if not subdir_path.exists():
-                continue
-                
-            for file_path in subdir_path.iterdir():
-                if file_path.is_file():
-                    try:
-                        if file_path.stat().st_mtime < cutoff_time:
-                            file_path.unlink()
-                            deleted_count += 1
-                            self.logger.info(f"Cleaned up old file: {file_path}")
-                    except Exception as e:
-                        self.logger.error(f"Error cleaning up {file_path}: {e}")
-        
-        self.logger.info(f"Cleanup complete: deleted {deleted_count} old files")
-        return deleted_count
-    
-    def archive_old_uploads(self, days_old: int = 30) -> Dict[str, Any]:
-        """Archive old uploads to reduce active storage"""
-        
-        archive_path = self.upload_path / "archived"
-        archive_path.mkdir(exist_ok=True)
-        
-        cutoff_time = datetime.now().timestamp() - (days_old * 24 * 3600)
-        archived_count = 0
-        archived_size = 0
-        
-        for subdir in ['papers', 'figures', 'protocols']:
-            subdir_path = self.upload_path / subdir
-            if not subdir_path.exists():
-                continue
-            
-            archive_subdir = archive_path / subdir
-            archive_subdir.mkdir(exist_ok=True)
-            
-            for file_path in subdir_path.iterdir():
-                if file_path.is_file() and file_path.stat().st_mtime < cutoff_time:
-                    try:
-                        archive_file_path = archive_subdir / file_path.name
-                        shutil.move(str(file_path), str(archive_file_path))
-                        
-                        archived_count += 1
-                        archived_size += archive_file_path.stat().st_size
-                        
-                    except Exception as e:
-                        self.logger.error(f"Error archiving {file_path}: {e}")
-        
-        return {
-            'archived_files': archived_count,
-            'archived_size_mb': round(archived_size / (1024 * 1024), 2),
-            'archive_path': str(archive_path)
-        }
-    
-    def get_storage_stats(self) -> Dict[str, Any]:
-        """Get storage usage statistics"""
-        stats = {
-            'total_files': 0,
-            'total_size_mb': 0,
-            'by_type': {}
-        }
-        
-        for subdir in ['papers', 'figures', 'protocols', 'temp', 'thumbnails', 'archived']:
-            subdir_path = self.upload_path / subdir
-            if not subdir_path.exists():
-                stats['by_type'][subdir] = {'file_count': 0, 'size_mb': 0}
-                continue
-            
-            subdir_files = 0
-            subdir_size = 0
-            
-            for file_path in subdir_path.iterdir():
-                if file_path.is_file():
-                    subdir_files += 1
-                    subdir_size += file_path.stat().st_size
-            
-            stats['by_type'][subdir] = {
-                'file_count': subdir_files,
-                'size_mb': round(subdir_size / (1024 * 1024), 2)
-            }
-            
-            stats['total_files'] += subdir_files
-            stats['total_size_mb'] += subdir_size / (1024 * 1024)
-        
-        stats['total_size_mb'] = round(stats['total_size_mb'], 2)
-        return stats
-    
-    def create_backup_archive(self, backup_path: str = None) -> Tuple[bool, str]:
-        """Create compressed backup of all uploaded files"""
-        
-        if backup_path is None:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_path = f"backup_uploads_{timestamp}.zip"
-        
-        try:
-            with zipfile.ZipFile(backup_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for subdir in ['papers', 'figures', 'protocols']:
-                    subdir_path = self.upload_path / subdir
-                    if subdir_path.exists():
-                        for file_path in subdir_path.rglob('*'):
-                            if file_path.is_file():
-                                arcname = str(file_path.relative_to(self.upload_path))
-                                zipf.write(file_path, arcname)
-            
-            backup_size = Path(backup_path).stat().st_size / (1024 * 1024)
-            return True, f"Backup created: {backup_path} ({backup_size:.1f}MB)"
-            
-        except Exception as e:
-            self.logger.error(f"Backup creation failed: {e}")
-            return False, f"Backup failed: {str(e)}"
-    
-    def restore_from_backup(self, backup_path: str) -> Tuple[bool, str, Dict[str, int]]:
-        """Restore files from backup archive"""
-        
-        if not Path(backup_path).exists():
-            return False, "Backup file not found", {}
-        
-        restored_counts = {'papers': 0, 'figures': 0, 'protocols': 0}
-        
-        try:
-            with zipfile.ZipFile(backup_path, 'r') as zipf:
-                zipf.extractall(self.upload_path)
-                
-                # Count restored files
-                for subdir in restored_counts:
-                    subdir_path = self.upload_path / subdir
-                    if subdir_path.exists():
-                        restored_counts[subdir] = len(list(subdir_path.glob('*')))
-            
-            total_restored = sum(restored_counts.values())
-            return True, f"Restored {total_restored} files", restored_counts
-            
-        except Exception as e:
-            self.logger.error(f"Restore failed: {e}")
-            return False, f"Restore failed: {str(e)}", {}
-    
-    def generate_file_hash(self, file_path: str, algorithm: str = 'md5') -> str:
-        """Generate hash for file integrity checking"""
-        
-        hash_algo = hashlib.new(algorithm)
-        
-        try:
-            with open(file_path, 'rb') as f:
-                for chunk in iter(lambda: f.read(4096), b""):
-                    hash_algo.update(chunk)
-            
-            return hash_algo.hexdigest()
-            
-        except Exception as e:
-            self.logger.error(f"Hash generation failed for {file_path}: {e}")
-            return ""
-    
-    def get_processing_capabilities(self) -> Dict[str, bool]:
-        """Get current file processing capabilities based on available libraries"""
-        
-        return {
-            'image_processing': PIL_AVAILABLE,
-            'pdf_processing': PDF_AVAILABLE,
-            'docx_processing': DOCX_AVAILABLE,
-            'text_extraction': True,
-            'figure_analysis': PIL_AVAILABLE,
-            'format_conversion': PIL_AVAILABLE,
-            'thumbnail_generation': PIL_AVAILABLE,
-            'file_compression': PIL_AVAILABLE,
-            'batch_processing': True,
-            'integrity_checking': True,
-            'metadata_extraction': True
-        }
-    
-    def get_supported_formats(self) -> Dict[str, List[str]]:
-        """Get list of supported file formats by category"""
-        
-        return {
-            'papers': list(self.allowed_paper_types),
-            'figures': list(self.allowed_figure_types),
-            'protocols': list(self.allowed_protocol_types)
-        }
-    
-    def validate_upload_limits(self, file_count: int, total_size: int, file_type: str = 'paper') -> Tuple[bool, List[str]]:
-        """Validate upload against platform limits"""
-        
-        errors = []
-        
-        # File count limits
-        max_files = {'paper': 10, 'figure': 20, 'protocol': 15}
-        if file_count > max_files.get(file_type, 10):
-            errors.append(f"Too many files: {file_count} (max: {max_files[file_type]})")
-        
-        # Total size limits
-        max_total_size = {'paper': 200 * 1024 * 1024, 'figure': 500 * 1024 * 1024, 'protocol': 100 * 1024 * 1024}
-        if total_size > max_total_size.get(file_type, 200 * 1024 * 1024):
-            max_mb = max_total_size[file_type] / (1024 * 1024)
-            current_mb = total_size / (1024 * 1024)
-            errors.append(f"Total size too large: {current_mb:.1f}MB (max: {max_mb:.1f}MB)")
-        
-        return len(errors) == 0, errors
