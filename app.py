@@ -9,11 +9,17 @@ Provides endpoints for:
  - Generic AI processing
   - Paper Analyzer (upload, run tool, status, download)
 """
-
+# Load environment variables
 import os
 import sys
 import uuid
 import traceback
+from dotenv import load_dotenv
+import os
+
+from dotenv import load_dotenv
+load_dotenv()
+
 import logging
 from datetime import datetime, timedelta
 from functools import wraps
@@ -128,7 +134,6 @@ CORS(app)
 if LIMITER_AVAILABLE:
     limiter = Limiter(
         app,
-        key_func=get_remote_address,
         default_limits=["1000 per hour", "100 per minute"],
         storage_uri=Config.RATE_LIMIT_STORAGE_URL
     )

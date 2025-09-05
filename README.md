@@ -91,15 +91,10 @@ EvidenciaFlow/
 
 ## 🔧 Configuration
 
-### Groq API Setup
-1. Get your free API key at [console.groq.com](https://console.groq.com)
-2. Add to `.env` file: `GROQ_API_KEY=your_key_here`
-3. Free tier includes: 30 requests/minute, 6,000 tokens/minute
 
 ### Database Configuration
 The platform uses SQLite databases for:
-- **User preferences** (anonymous-friendly)
-- **Journal requirements** (500+ publications)
+- **Journal requirements** 
 - **Figure analysis results**
 - **Citation and reference data**
 - **Protocol optimization history**
