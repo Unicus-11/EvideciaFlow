@@ -1,14 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import type {
-  ExtractDocumentStructureOutput,
-} from '@/ai/flows/extract-document-structure';
-import { extractDocumentStructure } from '@/ai/flows/extract-document-structure';
-import type {
-  CheckSectionSequenceOutput,
-} from '@/ai/flows/check-section-sequence';
-import { checkSectionSequence } from '@/ai/flows/check-section-sequence';
+import { apiClient } from '@/lib/api';
 
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -44,8 +37,16 @@ import {
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-type Section = ExtractDocumentStructureOutput['sections'][0];
-type SequenceCheck = CheckSectionSequenceOutput[0];
+type Section = {
+  title: string;
+  content: string;
+  type?: string;
+};
+
+type SequenceCheck = {
+  section: string;
+  isCorrectSequence: boolean;
+};
 
 const placeholderText = `Title: The Impact of Artificial Intelligence on Academic Research Methodologies
 
@@ -87,7 +88,7 @@ export function DocumentAnalyzer() {
   const handleAnalyze = async () => {
     setIsLoading(true);
     try {
-      const extracted = await extractDocumentStructure({ documentText });
+      const extracted = await apiClient.extractDocumentStructure(documentText);
       if (!extracted || !extracted.sections || extracted.sections.length === 0) {
         toast({
           variant: 'destructive',
@@ -103,7 +104,7 @@ export function DocumentAnalyzer() {
       setSelectedSection(extracted.sections[0]);
 
       const sectionTitles = extracted.sections.map((s) => s.type || s.title);
-      const sequence = await checkSectionSequence(sectionTitles);
+      const sequence = await apiClient.checkSectionSequence(sectionTitles);
       setSequenceStatus(sequence);
     } catch (error) {
       console.error('Analysis failed:', error);

@@ -1,17 +1,23 @@
-"""
-Groq API Client for Research Platform
-Handles communication with Groq's fast inference API
-"""
-
+import os
 import time
 from typing import Dict, Any, Optional, List
-from groq import Groq
 
+# Install python-dotenv if not already: pip install python-dotenv
+from dotenv import load_dotenv
+
+# Load .env file
+load_dotenv()
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if not GROQ_API_KEY:
+    raise ValueError("GROQ_API_KEY not found in environment. Please check your .env file.")
+
+from groq import Groq  # Make sure groq SDK is installed
 
 class GroqClient:
     """Client for Groq API with error handling and rate limiting"""
     
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str = GROQ_API_KEY):
         self.client = Groq(api_key=api_key)
         self.last_request_time = 0
         self.min_request_interval = 2  # 2 seconds between requests (30/min = 2s interval)
@@ -24,34 +30,15 @@ class GroqClient:
         temperature: float = 0.3,
         system_prompt: Optional[str] = None
     ) -> Dict[str, Any]:
-        """
-        Generate text using Groq API
-        
-        Args:
-            prompt: User prompt
-            model: Model to use ('llama3-70b-8192', 'llama3-8b-8192', 'mixtral-8x7b-32768')
-            max_tokens: Maximum tokens to generate
-            temperature: Creativity level (0-1, lower = more focused)
-            system_prompt: System instructions
-            
-        Returns:
-            Dict with success status, generated text, and metadata
-        """
         start_time = time.time()
-        
-        # Rate limiting
         self._enforce_rate_limit()
         
         try:
-            # Prepare messages
             messages = []
-            
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
-            
             messages.append({"role": "user", "content": prompt})
             
-            # Make API call
             response = self.client.chat.completions.create(
                 model=model,
                 messages=messages,
@@ -72,7 +59,6 @@ class GroqClient:
                 'completion_tokens': response.usage.completion_tokens,
                 'processing_time': processing_time
             }
-            
         except Exception as e:
             return {
                 'success': False,
@@ -89,21 +75,7 @@ class GroqClient:
         temperature: float = 0.3,
         system_prompt: Optional[str] = None
     ):
-        """
-        Generate streaming text for real-time responses
-        
-        Args:
-            prompt: User prompt
-            model: Model to use
-            max_tokens: Maximum tokens to generate
-            temperature: Creativity level
-            system_prompt: System instructions
-            
-        Yields:
-            String chunks of generated text
-        """
         self._enforce_rate_limit()
-        
         try:
             messages = []
             if system_prompt:
@@ -121,21 +93,10 @@ class GroqClient:
             for chunk in stream:
                 if chunk.choices[0].delta.content is not None:
                     yield chunk.choices[0].delta.content
-                    
         except Exception as e:
             yield f"Error: {str(e)}"
     
     def analyze_text_quality(self, text: str, context: str = "academic") -> Dict[str, Any]:
-        """
-        Analyze text quality using AI
-        
-        Args:
-            text: Text to analyze
-            context: Context type ('academic', 'technical', 'general')
-            
-        Returns:
-            Analysis results
-        """
         prompt = f"""
         Analyze the quality of this {context} text and provide scores (1-10):
 
@@ -161,57 +122,30 @@ class GroqClient:
         
         if response['success']:
             try:
-                # Try to parse JSON from response
                 import json
                 analysis = json.loads(response['text'])
-                return {
-                    'success': True,
-                    'analysis': analysis
-                }
+                return {'success': True, 'analysis': analysis}
             except:
-                return {
-                    'success': True,
-                    'analysis': response['text']  # Return raw text if JSON parsing fails
-                }
+                return {'success': True, 'analysis': response['text']}
         else:
             return response
     
     def get_available_models(self) -> List[str]:
-        """
-        Get list of available models
-        
-        Returns:
-            List of model names
-        """
         return [
-            'llama3-70b-8192',      # Best for complex academic tasks
-            'llama3-8b-8192',       # Faster for simple tasks
-            'mixtral-8x7b-32768',   # Good balance of speed and quality
-            'gemma-7b-it'           # Lightweight option
+            'llama3-70b-8192',
+            'llama3-8b-8192',
+            'mixtral-8x7b-32768',
+            'gemma-7b-it'
         ]
     
     def estimate_tokens(self, text: str) -> int:
-        """
-        Estimate token count for text
-        
-        Args:
-            text: Input text
-            
-        Returns:
-            Estimated token count
-        """
-        # Rough estimate: 1 token ≈ 4 characters for English
-        return len(text) // 4
+        return len(text) // 4  # Rough estimate: 1 token ≈ 4 characters
     
     def _enforce_rate_limit(self):
-        """Enforce rate limiting to stay within API limits"""
         current_time = time.time()
         time_since_last = current_time - self.last_request_time
-        
         if time_since_last < self.min_request_interval:
-            sleep_time = self.min_request_interval - time_since_last
-            time.sleep(sleep_time)
-        
+            time.sleep(self.min_request_interval - time_since_last)
         self.last_request_time = time.time()
     
     def batch_process_texts(
@@ -220,58 +154,27 @@ class GroqClient:
         prompt_template: str,
         model: str = 'llama3-8b-8192'
     ) -> List[Dict[str, Any]]:
-        """
-        Process multiple texts in batch
-        
-        Args:
-            texts: List of texts to process
-            prompt_template: Template with {text} placeholder
-            model: Model to use
-            
-        Returns:
-            List of results
-        """
         results = []
-        
         for i, text in enumerate(texts):
             prompt = prompt_template.format(text=text)
-            
-            result = self.generate_text(
-                prompt=prompt,
-                model=model
-            )
-            
+            result = self.generate_text(prompt=prompt, model=model)
             result['batch_index'] = i
             result['input_text'] = text
             results.append(result)
-            
-            # Small delay between batch requests
             time.sleep(0.5)
-        
         return results
     
     def health_check(self) -> Dict[str, Any]:
-        """
-        Check if Groq API is accessible
-        
-        Returns:
-            Health status
-        """
         try:
             response = self.generate_text(
                 prompt="Hello, please respond with 'OK'",
                 model='llama3-8b-8192',
                 max_tokens=5
             )
-            
             return {
                 'status': 'healthy' if response['success'] else 'unhealthy',
                 'response_time': response.get('processing_time', 0),
                 'model_available': response['success']
             }
         except Exception as e:
-            return {
-                'status': 'unhealthy',
-                'error': str(e)
-            }
-
+            return {'status': 'unhealthy', 'error': str(e)}

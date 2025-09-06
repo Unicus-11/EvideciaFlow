@@ -6,11 +6,12 @@ Centralized database operations for all features
 import sqlite3
 import json
 import hashlib
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
 from pathlib import Path
 import logging
 from contextlib import contextmanager
+import shutil
 
 
 class DatabaseHelper:
@@ -46,7 +47,7 @@ class DatabaseHelper:
         finally:
             conn.close()
     
-    # User Management
+    # ------------------- User Management -------------------
     def create_anonymous_session(self) -> str:
         """Create anonymous session ID"""
         session_id = hashlib.md5(f"{datetime.now().isoformat()}{id(object())}".encode()).hexdigest()
@@ -125,7 +126,7 @@ class DatabaseHelper:
                 ))
             conn.commit()
     
-    # Journal Requirements
+    # ------------------- Journal Requirements -------------------
     def get_journal_requirements(self, journal_name: str) -> Dict[str, Any]:
         """Get requirements for specific journal"""
         with self.get_db_connection('journal_requirements') as conn:
@@ -174,7 +175,7 @@ class DatabaseHelper:
             
             return [dict(row) for row in cursor.fetchall()]
     
-    # Activity Logging
+    # ------------------- Activity Logging -------------------
     def log_activity(self, session_id: str, feature: str, action: str, metadata: Dict[str, Any] = None):
         """Log user activity"""
         with self.get_db_connection('users') as conn:
@@ -195,7 +196,6 @@ class DatabaseHelper:
         since_date = datetime.now() - timedelta(days=days)
         
         with self.get_db_connection('users') as conn:
-            # Total activities
             cursor = conn.execute("""
                 SELECT COUNT(*) as total_activities
                 FROM activity_logs 
@@ -203,7 +203,6 @@ class DatabaseHelper:
             """, (session_id, since_date))
             total_activities = cursor.fetchone()['total_activities']
             
-            # Feature usage
             cursor = conn.execute("""
                 SELECT feature_used, COUNT(*) as count
                 FROM activity_logs 
@@ -211,7 +210,7 @@ class DatabaseHelper:
                 GROUP BY feature_used
                 ORDER BY count DESC
             """, (session_id, since_date))
-            feature_usage = dict(cursor.fetchall())
+            feature_usage = {row['feature_used']: row['count'] for row in cursor.fetchall()}
             
             return {
                 'total_activities': total_activities,
@@ -219,7 +218,7 @@ class DatabaseHelper:
                 'period_days': days
             }
     
-    # Figure Management
+    # ------------------- Figure Management -------------------
     def save_figure_upload(self, session_id: str, filename: str, file_path: str, 
                           original_specs: Dict[str, Any]) -> int:
         """Save figure upload information"""
@@ -299,7 +298,7 @@ class DatabaseHelper:
                 for row in cursor.fetchall()
             ]
     
-    # Processing Jobs Management
+    # ------------------- Processing Jobs Management -------------------
     def create_processing_job(self, session_id: str, feature: str, input_data: Dict[str, Any], 
                             priority: int = 5) -> int:
         """Create a new processing job"""
@@ -377,12 +376,10 @@ class DatabaseHelper:
             
             return [dict(row) for row in cursor.fetchall()]
     
-    # Content Storage (for explain/rewrite feature)
+    # ------------------- Content, Protocol, Citation, Idea, Contradiction Storage -------------------
     def save_rewrite_request(self, session_id: str, original_text: str, target_journal: str, 
                            rewritten_text: str, improvements: str, metadata: Dict[str, Any]) -> int:
         """Save explain/rewrite request and results"""
-        # This would use research_papers_content.db when created
-        # For now, log to activity
         self.log_activity(session_id, 'explain_rewrite', 'rewrite_completed', {
             'target_journal': target_journal,
             'original_length': len(original_text.split()),
@@ -392,7 +389,6 @@ class DatabaseHelper:
         })
         return 0  # Placeholder
     
-    # Protocol Storage
     def save_protocol_optimization(self, session_id: str, original_protocol: str, 
                                  optimized_protocol: str, improvements: str, 
                                  metadata: Dict[str, Any]) -> int:
@@ -404,9 +400,9 @@ class DatabaseHelper:
         })
         return 0  # Placeholder
     
-    # Citation Analysis Storage
-    def save_citation_analysis(self, session_id: str, analyzed_text: str, 
-                             citation_results: Dict[str, Any], metadata: Dict[str, Any]) -> int:
+        # Citation Analysis Storage
+    def save_citation_analysis(self, session_id: str, analyzed_text: str,
+                               citation_results: Dict[str, Any], metadata: Dict[str, Any]) -> int:
         """Save citation analysis results"""
         self.log_activity(session_id, 'citation_context', 'analysis_completed', {
             'text_length': len(analyzed_text.split()),
@@ -415,10 +411,10 @@ class DatabaseHelper:
             **metadata
         })
         return 0  # Placeholder
-    
+
     # Idea Recombination Storage
-    def save_idea_recombination(self, session_id: str, sources: List[str], 
-                              generated_ideas: str, metadata: Dict[str, Any]) -> int:
+    def save_idea_recombination(self, session_id: str, sources: List[str],
+                                generated_ideas: str, metadata: Dict[str, Any]) -> int:
         """Save idea recombination results"""
         self.log_activity(session_id, 'idea_recombinator', 'ideas_generated', {
             'sources_count': len(sources),
@@ -426,10 +422,10 @@ class DatabaseHelper:
             **metadata
         })
         return 0  # Placeholder
-    
+
     # Contradiction Detection Storage
-    def save_contradiction_analysis(self, session_id: str, analyzed_text: str, 
-                                  contradictions: Dict[str, Any], metadata: Dict[str, Any]) -> int:
+    def save_contradiction_analysis(self, session_id: str, analyzed_text: str,
+                                    contradictions: Dict[str, Any], metadata: Dict[str, Any]) -> int:
         """Save contradiction analysis results"""
         self.log_activity(session_id, 'contradiction_detector', 'analysis_completed', {
             'text_length': len(analyzed_text.split()),
@@ -438,12 +434,12 @@ class DatabaseHelper:
             **metadata
         })
         return 0  # Placeholder
-    
+
     # Cleanup and Maintenance
     def cleanup_old_sessions(self, days_old: int = 30):
         """Clean up old anonymous sessions and their data"""
         cutoff_date = datetime.now() - timedelta(days=days_old)
-        
+
         with self.get_db_connection('users') as conn:
             # Get old session IDs
             cursor = conn.execute("""
@@ -451,7 +447,7 @@ class DatabaseHelper:
                 WHERE last_activity < ?
             """, (cutoff_date,))
             old_sessions = [row['session_id'] for row in cursor.fetchall()]
-            
+
             if old_sessions:
                 # Delete activity logs
                 placeholders = ','.join(['?' for _ in old_sessions])
@@ -459,16 +455,16 @@ class DatabaseHelper:
                     DELETE FROM activity_logs 
                     WHERE session_id IN ({placeholders})
                 """, old_sessions)
-                
+
                 # Delete sessions
                 conn.execute(f"""
                     DELETE FROM anonymous_sessions 
                     WHERE session_id IN ({placeholders})
                 """, old_sessions)
-                
+
                 conn.commit()
                 self.logger.info(f"Cleaned up {len(old_sessions)} old sessions")
-        
+
         # Clean up old figures
         with self.get_db_connection('figures') as conn:
             conn.execute("""
@@ -479,37 +475,37 @@ class DatabaseHelper:
                 )
             """, (cutoff_date,))
             conn.commit()
-    
+
+    # Database Statistics
     def get_database_stats(self) -> Dict[str, Any]:
         """Get database statistics"""
         stats = {}
-        
+
         # Users database stats
         with self.get_db_connection('users') as conn:
             cursor = conn.execute("SELECT COUNT(*) FROM anonymous_sessions")
             stats['anonymous_sessions'] = cursor.fetchone()[0]
-            
+
             cursor = conn.execute("SELECT COUNT(*) FROM activity_logs")
             stats['total_activities'] = cursor.fetchone()[0]
-        
+
         # Figures database stats
         try:
             with self.get_db_connection('figures') as conn:
                 cursor = conn.execute("SELECT COUNT(*) FROM user_figures")
                 stats['uploaded_figures'] = cursor.fetchone()[0]
-                
+
                 cursor = conn.execute("SELECT COUNT(*) FROM processing_jobs")
                 stats['processing_jobs'] = cursor.fetchone()[0]
         except sqlite3.OperationalError:
             stats['uploaded_figures'] = 0
             stats['processing_jobs'] = 0
-        
+
         return stats
-    
+
     def test_database_connections(self) -> Dict[str, bool]:
         """Test all database connections"""
         results = {}
-        
         for db_name in self.databases:
             try:
                 with self.get_db_connection(db_name) as conn:
@@ -518,22 +514,21 @@ class DatabaseHelper:
             except Exception as e:
                 results[db_name] = False
                 self.logger.error(f"Database {db_name} connection failed: {e}")
-        
         return results
-    
+
     def backup_database(self, db_name: str, backup_path: str):
         """Create backup of specific database"""
         if db_name not in self.databases:
             raise ValueError(f"Unknown database: {db_name}")
-        
+
         import shutil
         shutil.copy2(self.databases[db_name], backup_path)
         self.logger.info(f"Database {db_name} backed up to {backup_path}")
-    
+
     def get_feature_usage_stats(self, days: int = 30) -> Dict[str, Any]:
         """Get platform-wide feature usage statistics"""
         since_date = datetime.now() - timedelta(days=days)
-        
+
         with self.get_db_connection('users') as conn:
             cursor = conn.execute("""
                 SELECT feature_used, COUNT(*) as usage_count,
@@ -543,14 +538,14 @@ class DatabaseHelper:
                 GROUP BY feature_used
                 ORDER BY usage_count DESC
             """, (since_date,))
-            
+
             feature_stats = {}
             for row in cursor.fetchall():
                 feature_stats[row['feature_used']] = {
                     'usage_count': row['usage_count'],
                     'unique_users': row['unique_users']
                 }
-            
+
             # Total stats
             cursor = conn.execute("""
                 SELECT COUNT(*) as total_activities,
@@ -558,9 +553,9 @@ class DatabaseHelper:
                 FROM activity_logs 
                 WHERE timestamp >= ?
             """, (since_date,))
-            
+
             totals = cursor.fetchone()
-            
+
             return {
                 'period_days': days,
                 'total_activities': totals['total_activities'],

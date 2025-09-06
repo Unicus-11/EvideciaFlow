@@ -1,5 +1,18 @@
 {
   "devDependencies": {
+    "@types/aws-lambda": "^8.10.152",
+    "@types/bunyan": "^1.8.11",
+    "@types/connect": "^3.4.38",
+    "@types/d3-shape": "^3.1.7",
+    "@types/memcached": "^2.2.10",
+    "@types/mysql": "^2.15.27",
+    "@types/pg": "^8.15.5",
+    "@types/pg-pool": "^2.0.6",
+    "@types/prop-types": "^15.7.15",
+    "@types/react": "^19.1.12",
+    "@types/request": "^2.48.13",
+    "@types/shimmer": "^1.2.0",
+    "@types/tedious": "^4.0.14",
     "typescript": "^5.9.2"
   }
 }

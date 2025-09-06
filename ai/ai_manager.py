@@ -37,7 +37,9 @@ class AIManager:
         "figure_fixer": "llama-3.1-8b-instant",
         "citation_context": "llama-3.1-70b-versatile",
         "idea_recombinator": "llama-3.1-70b-versatile",
-        "contradiction_detector": "llama-3.1-8b-instant"
+        "contradiction_detector": "llama-3.1-8b-instant",
+        "extract_document_structure": "llama-3.1-70b-versatile",
+        "check_section_sequence": "llama-3.1-8b-instant"
     }
         
     # Generation parameters by creativity level
@@ -96,6 +98,8 @@ class AIManager:
             "citation_context": self._handle_citation_context,
             "idea_recombinator": self._handle_idea_recombinator,
             "contradiction_detector": self._handle_contradiction_detector,
+            "extract_document_structure": self._handle_extract_document_structure,
+            "check_section_sequence": self._handle_check_section_sequence,
         }
 
     def process_request(self, feature: str, data: Dict[str, Any], session_id: Optional[str] = None) -> Dict[str, Any]:
@@ -388,6 +392,140 @@ class AIManager:
             "check_type": check_type,
             "processing_time": response.processing_time,
         }
+
+    def _handle_extract_document_structure(self, data: Dict[str, Any], session_id: Optional[str] = None) -> Dict[str, Any]:
+        """Handle document structure extraction"""
+        document_text = data.get("documentText", "")
+        
+        prompt = f"""You are an expert document analyst. Your task is to identify and extract the structural components from the given document text.
+
+Analyze the document and identify sections such as Title, Abstract, Introduction, Literature Review, Methodology, Analysis and Findings, Discussion, Conclusion, Recommendations, References, and Appendices.
+
+For each identified section, extract its title and content. If you are unsure of the section type, leave it blank.
+
+Return the extracted sections in a JSON array with this format:
+{{
+  "sections": [
+    {{
+      "title": "Section Title",
+      "content": "Section content...",
+      "type": "section_type"
+    }}
+  ]
+}}
+
+Document Text:
+{document_text}"""
+
+        response = self._call_model(
+            prompt=prompt,
+            model=self.DEFAULT_MODELS["extract_document_structure"],
+            max_tokens=4000,
+            temperature=0.3,
+            top_p=0.8
+        )
+        
+        if not response.success:
+            raise RuntimeError(response.error or "Model generation failed")
+
+        # Parse the JSON response
+        try:
+            import json
+            import re
+            
+            # Clean the response text to extract JSON
+            text = response.text.strip()
+            
+            # Try to find JSON in the response
+            json_match = re.search(r'\{.*\}', text, re.DOTALL)
+            if json_match:
+                json_str = json_match.group()
+                result = json.loads(json_str)
+            else:
+                result = json.loads(text)
+            
+            sections = result.get("sections", [])
+            if not sections:
+                # Fallback: create a single section with the entire document
+                sections = [{"title": "Document", "content": document_text, "type": "unknown"}]
+            
+            return {
+                "sections": sections,
+                "processing_time": response.processing_time,
+            }
+        except (json.JSONDecodeError, AttributeError) as e:
+            # Fallback parsing if JSON is malformed
+            self.logger.warning(f"Failed to parse document structure response: {e}")
+            return {
+                "sections": [{"title": "Document", "content": document_text, "type": "unknown"}],
+                "processing_time": response.processing_time,
+                "error": "Failed to parse structured response"
+            }
+
+    def _handle_check_section_sequence(self, data: Dict[str, Any], session_id: Optional[str] = None) -> Dict[str, Any]:
+        """Handle section sequence validation"""
+        sections = data.get("sections", [])
+        
+        prompt = f"""You are an expert in academic document structure.
+You will receive a list of sections from a document and determine if they are in the correct order.
+The standard academic sequence is: Title, Abstract, Introduction, Literature Review, Methodology, Analysis and Findings, Discussion, Conclusion, Recommendations, References, Appendices.
+
+Return an array of objects, where each object contains the section and a boolean indicating if it is in the correct sequence.
+
+Format:
+[
+  {{
+    "section": "section_name",
+    "isCorrectSequence": true/false
+  }}
+]
+
+Sections: {sections}"""
+
+        response = self._call_model(
+            prompt=prompt,
+            model=self.DEFAULT_MODELS["check_section_sequence"],
+            max_tokens=2000,
+            temperature=0.2,
+            top_p=0.7
+        )
+        
+        if not response.success:
+            raise RuntimeError(response.error or "Model generation failed")
+
+        # Parse the JSON response
+        try:
+            import json
+            import re
+            
+            # Clean the response text to extract JSON array
+            text = response.text.strip()
+            
+            # Try to find JSON array in the response
+            array_match = re.search(r'\[.*\]', text, re.DOTALL)
+            if array_match:
+                json_str = array_match.group()
+                result = json.loads(json_str)
+            else:
+                result = json.loads(text)
+            
+            # Return the array directly as expected by frontend
+            if isinstance(result, list):
+                return result
+            else:
+                # If result is not a list, try to extract from it
+                return result.get('sequence_checks', []) if isinstance(result, dict) else []
+                
+        except (json.JSONDecodeError, AttributeError) as e:
+            # Fallback: create basic sequence check
+            self.logger.warning(f"Failed to parse section sequence response: {e}")
+            sequence_checks = []
+            for i, section in enumerate(sections):
+                sequence_checks.append({
+                    "section": section,
+                    "isCorrectSequence": True  # Default to true if parsing fails
+                })
+            return sequence_checks
 
     def health_check(self) -> Dict[str, Any]:
         """Check if AI service is available and responsive"""

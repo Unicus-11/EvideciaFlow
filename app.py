@@ -27,15 +27,15 @@ from werkzeug.utils import secure_filename
 
 # Optional imports with fallbacks
 try:
-    import magic
+    import magic  # pyright: ignore[reportMissingImports]
     MAGIC_AVAILABLE = True
 except ImportError:
     MAGIC_AVAILABLE = False
     print("Warning: python-magic not available - MIME type validation disabled")
 
 try:
-    from flask_limiter import Limiter
-    from flask_limiter.util import get_remote_address
+    from flask_limiter import Limiter  # pyright: ignore[reportMissingImports]
+    from flask_limiter.util import get_remote_address  # pyright: ignore[reportMissingImports]
     LIMITER_AVAILABLE = True
 except ImportError:
     LIMITER_AVAILABLE = False
@@ -95,36 +95,21 @@ except ImportError:
 # -------------------------
 # Configuration
 # -------------------------
-class Config:
-    """Centralized configuration management"""
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
-    UPLOAD_FOLDER = 'uploads/temp/'
-    FIGURES_FOLDER = 'uploads/figures/'
-    SECRET_KEY = os.environ.get('APP_SECRET_KEY', 'research_platform_prototype_key_2024')
-    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg', 'gif', 'tiff', 'svg'}
-    SESSION_TIMEOUT = timedelta(hours=24)
-    RATE_LIMIT_STORAGE_URL = os.environ.get('REDIS_URL', 'memory://')
-    
-    # File validation settings
-    MAX_TEXT_SIZE = 1024 * 1024  # 1MB for text content
-    ALLOWED_MIME_TYPES = {
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'text/plain',
-        'image/png',
-        'image/jpeg',
-        'image/gif',
-        'image/tiff',
-        'image/svg+xml'
-    }
+from config import Config
 
 # -------------------------
 # Flask app setup
 # -------------------------
 app = Flask(__name__, template_folder='templates', static_folder='frontend')
 app.config.from_object(Config)
-CORS(app)
+
+# Configure CORS for frontend
+CORS(app, 
+     origins=Config.ALLOWED_ORIGINS,
+     supports_credentials=True,
+     allow_headers=['Content-Type', 'Authorization', 'X-Requested-With'],
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+)
 
 # Rate limiting setup
 if LIMITER_AVAILABLE:
@@ -445,6 +430,53 @@ def analyze_citations():
     except Exception as e:
         logger.error(f"Citation analysis error: {str(e)}\n{traceback.format_exc()}")
         return error_response('Analysis failed', str(e), 500)
+
+# -------------------------
+# Routes - Document Structure Analysis
+# -------------------------
+@app.route('/api/extract-document-structure', methods=['POST'])
+@limiter.limit("20 per minute")
+@require_component('ai_manager')
+@validate_json_request(['documentText'])
+def api_extract_document_structure(data):
+    """API endpoint for document structure extraction"""
+    try:
+        user_id = get_user_session()
+        document_text = data.get('documentText')
+        
+        # Use AI manager to extract document structure
+        result = app_components['ai_manager'].process_request(
+            'extract_document_structure', 
+            {'documentText': document_text}, 
+            user_id
+        )
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Document structure extraction error: {str(e)}\n{traceback.format_exc()}")
+        return error_response('Structure extraction failed', str(e), 500)
+
+@app.route('/api/check-section-sequence', methods=['POST'])
+@limiter.limit("20 per minute")
+@require_component('ai_manager')
+@validate_json_request(['sections'])
+def api_check_section_sequence(data):
+    """API endpoint for section sequence validation"""
+    try:
+        user_id = get_user_session()
+        sections = data.get('sections')
+        
+        # Use AI manager to check section sequence
+        result = app_components['ai_manager'].process_request(
+            'check_section_sequence', 
+            {'sections': sections}, 
+            user_id
+        )
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Section sequence check error: {str(e)}\n{traceback.format_exc()}")
+        return error_response('Sequence check failed', str(e), 500)
 
 # -------------------------
 # Routes - Generic AI processing

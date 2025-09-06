@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Connection Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .loading { background-color: #fff3cd; border-color: #ffeaa7; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>EvideciaFlow API Connection Test</h1>
+    
+    <div class="test-section" id="health-test">
+        <h3>Backend Health Check</h3>
+        <button onclick="testHealth()">Test Health</button>
+        <div id="health-result"></div>
+    </div>
+    
+    <div class="test-section" id="structure-test">
+        <h3>Document Structure Extraction</h3>
+        <button onclick="testDocumentStructure()">Test Structure Extraction</button>
+        <div id="structure-result"></div>
+    </div>
+    
+    <div class="test-section" id="sequence-test">
+        <h3>Section Sequence Validation</h3>
+        <button onclick="testSectionSequence()">Test Sequence Check</button>
+        <div id="sequence-result"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:5000';
+        
+        async function testHealth() {
+            const resultDiv = document.getElementById('health-result');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            resultDiv.className = 'test-section loading';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p><strong>✅ Backend is healthy!</strong></p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                    resultDiv.className = 'test-section success';
+                } else {
+                    resultDiv.innerHTML = `<p><strong>❌ Error:</strong> ${data.error || 'Unknown error'}</p>`;
+                    resultDiv.className = 'test-section error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p><strong>❌ Connection failed:</strong> ${error.message}</p>`;
+                resultDiv.className = 'test-section error';
+            }
+        }
+        
+        async function testDocumentStructure() {
+            const resultDiv = document.getElementById('structure-result');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            resultDiv.className = 'test-section loading';
+            
+            try {
+                const testData = {
+                    documentText: "Title: Test Paper\n\nAbstract: This is a test abstract.\n\nIntroduction: This is the introduction section."
+                };
+                
+                const response = await fetch(`${API_BASE_URL}/api/extract-document-structure`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p><strong>✅ Document structure extraction working!</strong></p>
+                        <p>Extracted ${data.sections ? data.sections.length : 0} sections</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                    resultDiv.className = 'test-section success';
+                } else {
+                    resultDiv.innerHTML = `<p><strong>❌ Error:</strong> ${data.error || 'Unknown error'}</p>`;
+                    resultDiv.className = 'test-section error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p><strong>❌ Connection failed:</strong> ${error.message}</p>`;
+                resultDiv.className = 'test-section error';
+            }
+        }
+        
+        async function testSectionSequence() {
+            const resultDiv = document.getElementById('sequence-result');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            resultDiv.className = 'test-section loading';
+            
+            try {
+                const testData = {
+                    sections: ["Title", "Abstract", "Introduction", "Conclusion"]
+                };
+                
+                const response = await fetch(`${API_BASE_URL}/api/check-section-sequence`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p><strong>✅ Section sequence validation working!</strong></p>
+                        <p>Checked ${Array.isArray(data) ? data.length : 0} sections</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                    resultDiv.className = 'test-section success';
+                } else {
+                    resultDiv.innerHTML = `<p><strong>❌ Error:</strong> ${data.error || 'Unknown error'}</p>`;
+                    resultDiv.className = 'test-section error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p><strong>❌ Connection failed:</strong> ${error.message}</p>`;
+                resultDiv.className = 'test-section error';
+            }
+        }
+    </script>
+</body>
+</html>
