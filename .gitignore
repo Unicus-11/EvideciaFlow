@@ -30,3 +30,7 @@ build/
 .ipynb_checkpoints/
 .env
 node_modules/
+node_modules/
+.next/
+frontend/node_modules/
+frontend/.next/
