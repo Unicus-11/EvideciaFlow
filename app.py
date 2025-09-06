@@ -122,7 +122,7 @@ class Config:
 # -------------------------
 # Flask app setup
 # -------------------------
-app = Flask(__name__, template_folder='frontend', static_folder='frontend')
+app = Flask(__name__, template_folder='templates', static_folder='frontend')
 app.config.from_object(Config)
 CORS(app)
 

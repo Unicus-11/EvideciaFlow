@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EvideciaFlow - Paper Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.8em;
+            margin-bottom: 15px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 40px;
+            margin-bottom: 40px;
+            border: 2px dashed #667eea;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: #764ba2;
+            background: #f0f8ff;
+        }
+
+        .upload-section.dragover {
+            border-color: #28a745;
+            background: #e8f5e8;
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .upload-section h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        .upload-section p {
+            color: #7f8c8d;
+            margin-bottom: 25px;
+            font-size: 1.1em;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-label {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .file-label:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .file-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            border-left: 5px solid #28a745;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .analyze-button {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            font-size: 1.3em;
+            font-weight: 600;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .analyze-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(40, 167, 69, 0.4);
+        }
+
+        .analyze-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .tools-section {
+            display: none;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .tools-section.show {
+            display: grid;
+        }
+
+        .tool-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border-left: 5px solid #667eea;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tool-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(45deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 50%;
+            transform: translate(30px, -30px);
+        }
+
+        .tool-card h3 {
+            color: #2c3e50;
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tool-card p {
+            color: #7f8c8d;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .tool-button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .tool-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        .tool-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            margin-top: 40px;
+            display: none;
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .result-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border-left: 5px solid #28a745;
+        }
+
+        .result-card h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .result-content {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 3px solid #667eea;
+            margin-bottom: 20px;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 5px solid #dc3545;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 5px solid #28a745;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 5px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #7f8c8d;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .figure-preview {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin: 20px 0;
+        }
+
+        .download-button {
+            background: linear-gradient(45deg, #17a2b8, #20c997);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .download-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(23, 162, 184, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+
+            .header {
+                padding: 30px 20px;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .tools-section {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Paper Analyzer</h1>
+            <p>Upload your research paper and get comprehensive analysis with our AI-powered tools for writing improvement, figure enhancement, citation optimization, and contradiction detection.</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Upload Section -->
+            <div class="upload-section" id="uploadSection">
+                <div class="upload-icon">📄</div>
+                <h2>Upload Research Paper</h2>
+                <p>Drag and drop your PDF file here or click to browse</p>
+                <input type="file" id="paperFile" class="file-input" accept=".pdf,.doc,.docx" />
+                <label for="paperFile" class="file-label">Choose File</label>
+                
+                <div class="file-info" id="fileInfo">
+                    <h4>📄 <span id="fileName"></span></h4>
+                    <p>Size: <span id="fileSize"></span> | Type: <span id="fileType"></span></p>
+                </div>
+
+                <button class="analyze-button" id="analyzeButton" disabled>
+                    🔍 Analyze Paper
+                </button>
+            </div>
+
+            <!-- Loading Section -->
+            <div class="loading" id="loadingSection">
+                <div class="loading-spinner"></div>
+                <h3>Analyzing your paper...</h3>
+                <p>Our AI is processing your document and preparing analysis tools</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <p id="loadingStatus">Initializing analysis...</p>
+            </div>
+
+            <!-- Error/Success Messages -->
+            <div class="error-message" id="errorMessage"></div>
+            <div class="success-message" id="successMessage"></div>
+
+            <!-- Tools Section -->
+            <div class="tools-section" id="toolsSection">
+                <div class="tool-card">
+                    <h3>✍️ Paper Polisher</h3>
+                    <p>Improve your paper's writing style, grammar, and academic tone. Get suggestions for better clarity and flow.</p>
+                    <button class="tool-button" id="polishButton">Polish Writing</button>
+                </div>
+
+                <div class="tool-card">
+                    <h3>🎨 Figure Fixer</h3>
+                    <p>Enhance your figures and charts with better formatting, colors, and professional presentation standards.</p>
+                    <button class="tool-button" id="figureButton">Fix Figures</button>
+                </div>
+
+                <div class="tool-card">
+                    <h3>📚 Smart Citation</h3>
+                    <p>Optimize your citations and references. Check formatting, find missing citations, and improve context.</p>
+                    <button class="tool-button" id="citationButton">Optimize Citations</button>
+                </div>
+
+                <div class="tool-card">
+                    <h3>🔍 Claim Checker</h3>
+                    <p>Detect contradictions and verify claims against existing literature. Ensure accuracy and consistency.</p>
+                    <button class="tool-button" id="claimButton">Check Claims</button>
+                </div>
+
+                <div class="tool-card">
+                    <h3>🧪 Protocol Optimizer</h3>
+                    <p>Improve your methodology and experimental protocols for better reproducibility and efficiency.</p>
+                    <button class="tool-button" id="protocolButton">Optimize Protocol</button>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section" id="resultsSection">
+                <div class="tabs">
+                    <button class="tab active" data-tab="polish">Paper Polisher</button>
+                    <button class="tab" data-tab="figures">Figure Fixer</button>
+                    <button class="tab" data-tab="citations">Smart Citation</button>
+                    <button class="tab" data-tab="claims">Claim Checker</button>
+                    <button class="tab" data-tab="protocol">Protocol Optimizer</button>
+                </div>
+
+                <!-- Paper Polisher Results -->
+                <div class="tab-content active" id="polish-content">
+                    <div class="result-card">
+                        <h3>✍️ Writing Improvements</h3>
+                        <div class="result-content" id="polishResults">
+                            Results will appear here...
+                        </div>
+                        <button class="download-button" id="downloadPolish">Download Improved Paper</button>
+                    </div>
+                </div>
+
+                <!-- Figure Fixer Results -->
+                <div class="tab-content" id="figures-content">
+                    <div class="result-card">
+                        <h3>🎨 Figure Enhancements</h3>
+                        <div class="result-content" id="figureResults">
+                            Results will appear here...
+                        </div>
+                        <button class="download-button" id="downloadFigures">Download Enhanced Figures</button>
+                    </div>
+                </div>
+
+                <!-- Citation Results -->
+                <div class="tab-content" id="citations-content">
+                    <div class="result-card">
+                        <h3>📚 Citation Optimization</h3>
+                        <div class="result-content" id="citationResults">
+                            Results will appear here...
+                        </div>
+                        <button class="download-button" id="downloadCitations">Download Updated References</button>
+                    </div>
+                </div>
+
+                <!-- Claim Checker Results -->
+                <div class="tab-content" id="claims-content">
+                    <div class="result-card">
+                        <h3>🔍 Claim Analysis</h3>
+                        <div class="result-content" id="claimResults">
+                            Results will appear here...
+                        </div>
+                        <button class="download-button" id="downloadClaims">Download Verification Report</button>
+                    </div>
+                </div>
+
+                <!-- Protocol Results -->
+                <div class="tab-content" id="protocol-content">
+                    <div class="result-card">
+                        <h3>🧪 Protocol Optimization</h3>
+                        <div class="result-content" id="protocolResults">
+                            Results will appear here...
+                        </div>
+                        <button class="download-button" id="downloadProtocol">Download Optimized Protocol</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class PaperAnalyzer {
+            constructor() {
+                this.uploadedFile = null;
+                this.analysisData = null;
+                this.initializeEventListeners();
+            }
+
+            initializeEventListeners() {
+                // File upload handling
+                const fileInput = document.getElementById('paperFile');
+                const uploadSection = document.getElementById('uploadSection');
+                const analyzeButton = document.getElementById('analyzeButton');
+
+                fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+                analyzeButton.addEventListener('click', () => this.analyzePaper());
+
+                // Drag and drop
+                uploadSection.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadSection.classList.add('dragover');
+                });
+
+                uploadSection.addEventListener('dragleave', () => {
+                    uploadSection.classList.remove('dragover');
+                });
+
+                uploadSection.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadSection.classList.remove('dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        this.handleFile(files[0]);
+                    }
+                });
+
+                // Tool buttons
+                document.getElementById('polishButton').addEventListener('click', () => this.runTool('polish'));
+                document.getElementById('figureButton').addEventListener('click', () => this.runTool('figure'));
+                document.getElementById('citationButton').addEventListener('click', () => this.runTool('citation'));
+                document.getElementById('claimButton').addEventListener('click', () => this.runTool('claim'));
+                document.getElementById('protocolButton').addEventListener('click', () => this.runTool('protocol'));
+
+                // Tab switching
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
+                });
+
+                // Download buttons
+                document.querySelectorAll('.download-button').forEach(btn => {
+                    btn.addEventListener('click', (e) => this.downloadResult(e.target.id));
+                });
+            }
+
+            handleFileSelect(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    this.handleFile(file);
+                }
+            }
+
+            handleFile(file) {
+                if (!file.type.includes('pdf') && !file.name.toLowerCase().endsWith('.pdf')) {
+                    this.showError('Please upload a PDF file.');
+                    return;
+                }
+
+                this.uploadedFile = file;
+                this.displayFileInfo(file);
+                document.getElementById('analyzeButton').disabled = false;
+            }
+
+            displayFileInfo(file) {
+                document.getElementById('fileName').textContent = file.name;
+                document.getElementById('fileSize').textContent = this.formatFileSize(file.size);
+                document.getElementById('fileType').textContent = file.type || 'PDF';
+                document.getElementById('fileInfo').classList.add('show');
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            async analyzePaper() {
+                if (!this.uploadedFile) {
+                    this.showError('Please select a file first.');
+                    return;
+                }
+
+                this.showLoading();
+                
+                const formData = new FormData();
+                formData.append('paper_file', this.uploadedFile);
+
+                try {
+                    // Simulate progress updates
+                    this.updateProgress(10, 'Uploading file...');
+                    await this.delay(1000);
+                    
+                    this.updateProgress(30, 'Processing PDF...');
+                    await this.delay(1500);
+
+                    this.updateProgress(60, 'Analyzing content...');
+                    await this.delay(2000);
+
+                    this.updateProgress(90, 'Preparing tools...');
+                    await this.delay(1000);
+
+                    const response = await fetch('/api/analyze-paper', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        this.analysisData = result.data;
+                        this.updateProgress(100, 'Analysis complete!');
+                        await this.delay(500);
+                        
+                        this.hideLoading();
+                        this.showTools();
+                        this.showSuccess('Paper analyzed successfully! You can now use the analysis tools.');
+                    } else {
+                        throw new Error(result.error || 'Analysis failed');
+                    }
+
+                } catch (error) {
+                    console.error('Analysis error:', error);
+                    this.hideLoading();
+                    this.showError('Failed to analyze paper: ' + error.message);
+                }
+            }
+
+            async runTool(toolName) {
+                if (!this.analysisData) {
+                    this.showError('Please analyze the paper first.');
+                    return;
+                }
+
+                const button = document.getElementById(toolName + 'Button');
+                button.disabled = true;
+                button.textContent = 'Processing...';
+
+                try {
+                    const response = await fetch(`/api/run-tool/${toolName}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            analysis_id: this.analysisData.analysis_id,
+                            tool_config: this.getToolConfig(toolName)
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        this.displayToolResult(toolName, result.data);
+                        this.switchTab(toolName === 'polish' ? 'polish' : 
+                                     toolName === 'figure' ? 'figures' : 
+                                     toolName === 'citation' ? 'citations' : 
+                                     toolName === 'claim' ? 'claims' : 'protocol');
+                        this.showResults();
+                    } else {
+                        throw new Error(result.error || 'Tool execution failed');
+                    }
+
+                } catch (error) {
+                    console.error(`${toolName} tool error:`, error);
+                    this.showError(`${toolName} tool failed: ` + error.message);
+                } finally {
+                    button.disabled = false;
+                    button.textContent = this.getButtonText(toolName);
+                }
+            }
+
+            getToolConfig(toolName) {
+                // Return default configurations for each tool
+                const configs = {
+                    polish: { focus: 'grammar_and_style', academic_level: 'high' },
+                    figure: { style: 'academic', color_scheme: 'professional' },
+                    citation: { format: 'apa', check_context: true },
+                    claim: { depth: 'thorough', sources: 'comprehensive' },
+                    protocol: { focus: 'reproducibility', suggestions: 'optimization' }
+                };
+                return configs[toolName] || {};
+            }
+
+            getButtonText(toolName) {
+                const texts = {
+                    polish: 'Polish Writing',
+                    figure: 'Fix Figures',
+                    citation: 'Optimize Citations',
+                    claim: 'Check Claims',
+                    protocol: 'Optimize Protocol'
+                };
+                return texts[toolName] || 'Run Tool';
+            }
+
+            displayToolResult(toolName, resultData) {
+                const resultContainers = {
+                    polish: 'polishResults',
+                    figure: 'figureResults',
+                    citation: 'citationResults',
+                    claim: 'claimResults',
+                    protocol: 'protocolResults'
+                };
+
+                const containerId = resultContainers[toolName];
+                const container = document.getElementById(containerId);
+                
+                if (resultData.html) {
+                    container.innerHTML = resultData.html;
+                } else if (resultData.text) {
+                    container.innerHTML = `<pre>${resultData.text}</pre>`;
+                } else {
+                    container.innerHTML = '<p>Tool completed successfully. Results processed.</p>';
+                }
+            }
+
+            switchTab(tabName) {
+                // Hide all tabs and content
+                document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+                // Show selected tab
+                document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+                document.getElementById(`${tabName}-content`).classList.add('active');
+            }
+
+            showLoading() {
+                document.getElementById('loadingSection').style.display = 'block';
+                document.getElementById('analyzeButton').disabled = true;
+            }
+
+            hideLoading() {
+                document.getElementById('loadingSection').style.display = 'none';
+                document.getElementById('analyzeButton').disabled = false;
+            }
+
+            updateProgress(percentage, status) {
+                document.getElementById('progressFill').style.width = percentage + '%';
+                document.getElementById('loadingStatus').textContent = status;
+            }
+
+            showTools() {
+                document.getElementById('toolsSection').classList.add('show');
+            }
+
+            showResults() {
+                document.getElementById('resultsSection').classList.add('show');
+            }
+
+            showError(message) {
+                const errorDiv = document.getElementById('errorMessage');
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                }, 5000);
+            }
+
+            showSuccess(message) {
+                const successDiv = document.getElementById('successMessage');
+                successDiv.textContent = message;
+                successDiv.style.display = 'block';
+                setTimeout(() => {
+                    successDiv.style.display = 'none';
+                }, 5000);
+            }
+
+            async downloadResult(buttonId) {
+                // Implement download functionality
+                console.log('Download requested for:', buttonId);
+                this.showSuccess('Download feature will be implemented with backend integration.');
+            }
+
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // Initialize the paper analyzer when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new PaperAnalyzer();
+        });
+    </script>
+</body>
+</html>
