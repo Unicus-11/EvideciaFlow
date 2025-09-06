@@ -392,7 +392,7 @@ class AIManager:
     def health_check(self) -> Dict[str, Any]:
         """Check if AI service is available and responsive"""
         try:
-            response = self._call_model("Test connection", "llama-3.1-8b-instant", 10)
+            response = self._call_model("Test connection", "llama3-8b-8192", 10)
             status = "healthy" if response.success else "unhealthy"
             
             return {

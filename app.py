@@ -1,4 +1,3 @@
-# app.py - Main Flask application
 """
 EvideciaFlow Research Platform - Flask server
 Improved version with better configuration, security, and code organization.
@@ -6,24 +5,22 @@ Provides endpoints for:
   - Dashboard and feature pages
   - Citation analysis
   - Explain / Rewrite
- - Generic AI processing
+  - Generic AI processing
   - Paper Analyzer (upload, run tool, status, download)
 """
-# Load environment variables
+
 import os
 import sys
 import uuid
 import traceback
-from dotenv import load_dotenv
-import os
-
-from dotenv import load_dotenv
-load_dotenv()
-
 import logging
 from datetime import datetime, timedelta
 from functools import wraps
 from collections import defaultdict
+
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask import Flask, request, jsonify, render_template, session, abort
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -48,33 +45,6 @@ except ImportError:
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # -------------------------
-# Configuration
-# -------------------------
-class Config:
-    """Centralized configuration management"""
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
-    UPLOAD_FOLDER = 'uploads/temp/'
-    FIGURES_FOLDER = 'uploads/figures/'
-    SECRET_KEY = os.environ.get('APP_SECRET_KEY', 'research_platform_prototype_key_2024')
-    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg', 'gif', 'tiff', 'svg'}
-    SESSION_TIMEOUT = timedelta(hours=24)
-    RATE_LIMIT_STORAGE_URL = os.environ.get('REDIS_URL', 'memory://')
-    
-    # File validation settings
-    MAX_TEXT_SIZE = 1024 * 1024  # 1MB for text content
-    ALLOWED_MIME_TYPES = {
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'text/plain',
-        'image/png',
-        'image/jpeg',
-        'image/gif',
-        'image/tiff',
-        'image/svg+xml'
-    }
-
-# -------------------------
 # Imports with graceful fallbacks
 # -------------------------
 def safe_import(module_name, class_name=None, fallback=None):
@@ -88,7 +58,7 @@ def safe_import(module_name, class_name=None, fallback=None):
         print(f"Warning: {module_name}.{class_name or ''} not found - {str(e)}")
         return fallback
 
-# Import optional components
+# Import components with fallbacks
 CitationContextAnalyzer = safe_import('backend.citation_context', 'CitationContextAnalyzer')
 AIManager = safe_import('ai.ai_manager', 'AIManager')
 FileProcessor = safe_import('backend.utils.file_processor', 'FileProcessor')
@@ -123,14 +93,40 @@ except ImportError:
             pass
 
 # -------------------------
+# Configuration
+# -------------------------
+class Config:
+    """Centralized configuration management"""
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
+    UPLOAD_FOLDER = 'uploads/temp/'
+    FIGURES_FOLDER = 'uploads/figures/'
+    SECRET_KEY = os.environ.get('APP_SECRET_KEY', 'research_platform_prototype_key_2024')
+    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg', 'gif', 'tiff', 'svg'}
+    SESSION_TIMEOUT = timedelta(hours=24)
+    RATE_LIMIT_STORAGE_URL = os.environ.get('REDIS_URL', 'memory://')
+    
+    # File validation settings
+    MAX_TEXT_SIZE = 1024 * 1024  # 1MB for text content
+    ALLOWED_MIME_TYPES = {
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain',
+        'image/png',
+        'image/jpeg',
+        'image/gif',
+        'image/tiff',
+        'image/svg+xml'
+    }
+
+# -------------------------
 # Flask app setup
 # -------------------------
 app = Flask(__name__, template_folder='frontend', static_folder='frontend')
 app.config.from_object(Config)
 CORS(app)
 
-# Rate limiting
-# Rate limiting (optional)
+# Rate limiting setup
 if LIMITER_AVAILABLE:
     limiter = Limiter(
         app,
@@ -264,8 +260,6 @@ def validate_file_security(file):
         except Exception as e:
             logger.warning(f"MIME type check failed: {str(e)}")
             # Continue without MIME check if magic fails
-    else:
-        logger.debug("MIME type validation skipped - python-magic not available")
     
     return True, "File validation passed"
 
@@ -538,7 +532,7 @@ def api_explain_rewrite():
         return error_response('Processing failed', str(e), 500)
 
 # -------------------------
-# Routes - Paper Analyzer
+# Routes - Paper Analyzer (CLEANED UP)
 # -------------------------
 @app.route('/api/analyze-paper', methods=['POST'])
 @limiter.limit("10 per minute")
@@ -567,57 +561,6 @@ def api_analyze_paper():
         logger.error(f"Paper analysis error: {str(e)}\n{traceback.format_exc()}")
         return error_response('Analysis failed', str(e), 500)
 
-@app.route('/api/download-result/<analysis_id>/<tool_name>', methods=['GET'])
-@require_component('paper_analyzer')
-def api_download_result(analysis_id, tool_name):
-    """API endpoint for downloading tool results"""
-    try:
-        # Input validation
-        if not analysis_id or not tool_name:
-            return error_response('Missing parameters', 'Analysis ID and tool name are required')
-        
-        # Sanitize inputs
-        analysis_id = secure_filename(analysis_id)
-        tool_name = secure_filename(tool_name)
-
-        analysis_data = app_components['paper_analyzer']._get_analysis_data(analysis_id)
-        if not analysis_data:
-            return error_response('Analysis not found', status=404)
-
-        return success_response({
-            'download_url': f'/downloads/{analysis_id}_{tool_name}_result.pdf',
-            'filename': f'{tool_name}_analysis_result.pdf',
-        }, 'Download link generated successfully')
-
-    except Exception as e:
-        logger.error(f"Download error: {str(e)}\n{traceback.format_exc()}")
-        return error_response('Download failed', str(e), 500)
-
-@app.route('/api/analysis-status/<analysis_id>', methods=['GET'])
-@require_component('paper_analyzer')
-def api_analysis_status(analysis_id):
-    """Get the status of a paper analysis"""
-    try:
-        analysis_id = secure_filename(analysis_id)
-        analysis_data = app_components['paper_analyzer']._get_analysis_data(analysis_id)
-        
-        if not analysis_data:
-            return error_response('Analysis not found', status=404)
-
-        return success_response({
-            'analysis_id': analysis_id,
-            'status': analysis_data.get('status', 'unknown'),
-            'filename': analysis_data.get('filename', 'unknown'),
-            'created_at': analysis_data.get('created_at'),
-            'word_count': analysis_data.get('word_count', 0),
-            'available_tools': list(app_components['paper_analyzer'].available_tools.keys()) 
-                             if hasattr(app_components['paper_analyzer'], 'available_tools') else []
-        })
-
-    except Exception as e:
-        logger.error(f"Status check error: {str(e)}\n{traceback.format_exc()}")
-        return error_response('Status check failed', str(e), 500)
-
 @app.route('/api/run-tool/<tool_name>', methods=['POST'])
 @limiter.limit("20 per minute")
 @require_component('paper_analyzer')
@@ -644,6 +587,57 @@ def api_run_tool(data, tool_name):
     except Exception as e:
         logger.error(f"Tool execution error for {tool_name}: {str(e)}\n{traceback.format_exc()}")
         return error_response('Tool execution failed', str(e), 500)
+
+@app.route('/api/analysis-status/<analysis_id>', methods=['GET'])
+@require_component('paper_analyzer')
+def api_analysis_status(analysis_id):
+    """Get the status of a paper analysis"""
+    try:
+        analysis_id = secure_filename(analysis_id)
+        analysis_data = app_components['paper_analyzer']._get_analysis_data(analysis_id)
+        
+        if not analysis_data:
+            return error_response('Analysis not found', status=404)
+
+        return success_response({
+            'analysis_id': analysis_id,
+            'status': analysis_data.get('status', 'unknown'),
+            'filename': analysis_data.get('filename', 'unknown'),
+            'created_at': analysis_data.get('created_at'),
+            'word_count': analysis_data.get('word_count', 0),
+            'available_tools': list(app_components['paper_analyzer'].available_tools.keys()) 
+                             if hasattr(app_components['paper_analyzer'], 'available_tools') else []
+        })
+
+    except Exception as e:
+        logger.error(f"Status check error: {str(e)}\n{traceback.format_exc()}")
+        return error_response('Status check failed', str(e), 500)
+
+@app.route('/api/download-result/<analysis_id>/<tool_name>', methods=['GET'])
+@require_component('paper_analyzer')
+def api_download_result(analysis_id, tool_name):
+    """API endpoint for downloading tool results"""
+    try:
+        # Input validation
+        if not analysis_id or not tool_name:
+            return error_response('Missing parameters', 'Analysis ID and tool name are required')
+        
+        # Sanitize inputs
+        analysis_id = secure_filename(analysis_id)
+        tool_name = secure_filename(tool_name)
+
+        analysis_data = app_components['paper_analyzer']._get_analysis_data(analysis_id)
+        if not analysis_data:
+            return error_response('Analysis not found', status=404)
+
+        return success_response({
+            'download_url': f'/downloads/{analysis_id}_{tool_name}_result.pdf',
+            'filename': f'{tool_name}_analysis_result.pdf',
+        }, 'Download link generated successfully')
+
+    except Exception as e:
+        logger.error(f"Download error: {str(e)}\n{traceback.format_exc()}")
+        return error_response('Download failed', str(e), 500)
 
 # -------------------------
 # Utility endpoints
@@ -684,6 +678,166 @@ def api_get_journals():
         return error_response('Failed to fetch journals', str(e), 500)
 
 # -------------------------
+# Testing endpoint for Paper Analyzer
+# -------------------------
+@app.route('/api/test-paper-analyzer', methods=['GET', 'POST'])
+def test_paper_analyzer():
+    """Test endpoint for paper analyzer functionality"""
+    if request.method == 'GET':
+        # Return test interface
+        return """
+        <html>
+        <head><title>Paper Analyzer Test</title></head>
+        <body>
+            <h2>Paper Analyzer Test Interface</h2>
+            <form method="POST" enctype="multipart/form-data">
+                <div>
+                    <label>Upload Test File:</label><br>
+                    <input type="file" name="test_file" accept=".pdf,.txt,.docx">
+                </div><br>
+                <div>
+                    <label>Or Enter Test Text:</label><br>
+                    <textarea name="test_text" rows="10" cols="50" placeholder="Paste your test paper content here..."></textarea>
+                </div><br>
+                <div>
+                    <label>Test Mode:</label><br>
+                    <select name="test_mode">
+                        <option value="basic">Basic Test</option>
+                        <option value="full">Full Analysis</option>
+                        <option value="tools">Test All Tools</option>
+                    </select>
+                </div><br>
+                <input type="submit" value="Test Paper Analyzer">
+            </form>
+            
+            <h3>Paper Analyzer Status:</h3>
+            <p><strong>Available:</strong> {'Yes' if app_components['paper_analyzer'] else 'No'}</p>
+            <p><strong>AI Manager:</strong> {'Available' if app_components['ai_manager'] else 'Not Available'}</p>
+            <p><strong>File Processor:</strong> {'Available' if app_components['file_processor'] else 'Not Available'}</p>
+        </body>
+        </html>
+        """
+    
+    # Handle POST request for testing
+    try:
+        test_mode = request.form.get('test_mode', 'basic')
+        
+        # Check if paper analyzer is available
+        if not app_components['paper_analyzer']:
+            return jsonify({
+                'success': False,
+                'error': 'Paper Analyzer not available',
+                'details': 'The PaperAnalyzer component failed to initialize'
+            })
+        
+        test_results = {
+            'success': True,
+            'test_mode': test_mode,
+            'timestamp': datetime.now().isoformat(),
+            'results': {}
+        }
+        
+        # Basic functionality test
+        if test_mode in ['basic', 'full', 'tools']:
+            test_results['results']['component_status'] = {
+                'paper_analyzer': 'Available',
+                'ai_manager': 'Available' if app_components['ai_manager'] else 'Not Available',
+                'file_processor': 'Available' if app_components['file_processor'] else 'Not Available'
+            }
+            
+            # Test basic methods if they exist
+            analyzer = app_components['paper_analyzer']
+            test_results['results']['methods'] = {}
+            
+            # Check available methods
+            available_methods = [method for method in dir(analyzer) if not method.startswith('_')]
+            test_results['results']['available_methods'] = available_methods
+            
+            # Test with actual content if provided
+            test_content = None
+            
+            if 'test_file' in request.files and request.files['test_file'].filename:
+                file = request.files['test_file']
+                if app_components['file_processor']:
+                    filename = f"test_{uuid.uuid4().hex}_{secure_filename(file.filename)}"
+                    filepath = os.path.join(Config.UPLOAD_FOLDER, filename)
+                    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                    
+                    try:
+                        file.save(filepath)
+                        success, content, _ = app_components['file_processor'].extract_text_from_file(filepath)
+                        if success:
+                            test_content = content[:1000]  # First 1000 chars for testing
+                    finally:
+                        try:
+                            os.remove(filepath)
+                        except:
+                            pass
+            
+            elif request.form.get('test_text'):
+                test_content = request.form.get('test_text')[:1000]  # Limit for testing
+            
+            if test_content:
+                test_results['results']['test_content_length'] = len(test_content)
+                test_results['results']['test_content_preview'] = test_content[:200] + "..."
+        
+        # Full analysis test
+        if test_mode in ['full', 'tools']:
+            # Try to run actual analysis if we have content
+            if test_content and hasattr(analyzer, 'analyze_paper'):
+                try:
+                    # Create a mock file object for testing
+                    from io import BytesIO
+                    mock_file = type('MockFile', (), {
+                        'filename': 'test.txt',
+                        'read': lambda: test_content.encode(),
+                        'stream': BytesIO(test_content.encode())
+                    })()
+                    
+                    user_id = get_user_session()
+                    analysis_result = analyzer.analyze_paper(mock_file, user_id)
+                    test_results['results']['analysis_test'] = {
+                        'success': analysis_result.get('success', False),
+                        'analysis_id': analysis_result.get('data', {}).get('analysis_id', 'N/A')
+                    }
+                except Exception as e:
+                    test_results['results']['analysis_test'] = {
+                        'success': False,
+                        'error': str(e)
+                    }
+        
+        # Tools test
+        if test_mode == 'tools':
+            if hasattr(analyzer, 'available_tools'):
+                test_results['results']['available_tools'] = list(analyzer.available_tools.keys())
+            else:
+                test_results['results']['available_tools'] = 'No available_tools attribute found'
+                
+            # Test individual tool methods if they exist
+            tool_tests = {}
+            test_tools = ['citation', 'contradiction', 'figure', 'protocol']
+            
+            for tool in test_tools:
+                tool_method = f"run_{tool}_analysis"
+                if hasattr(analyzer, tool_method):
+                    tool_tests[tool] = f"Method {tool_method} exists"
+                else:
+                    tool_tests[tool] = f"Method {tool_method} not found"
+            
+            test_results['results']['tool_methods'] = tool_tests
+        
+        return jsonify(test_results)
+        
+    except Exception as e:
+        logger.error(f"Paper analyzer test error: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({
+            'success': False,
+            'error': 'Test failed',
+            'details': str(e),
+            'traceback': traceback.format_exc()
+        })
+
+# -------------------------
 # Error handlers
 # -------------------------
 @app.errorhandler(404)
@@ -712,7 +866,7 @@ def ratelimit_handler(e):
     )
 
 # -------------------------
-# Main
+# Utility functions for app setup
 # -------------------------
 def create_directories():
     """Create necessary directories"""
@@ -755,14 +909,18 @@ def print_startup_info():
         ("GET  /explain-rewrite", "Text Rewriting"),
         ("POST /api/analyze-paper", "Upload & analyze paper"),
         ("POST /api/run-tool/<tool>", "Run analysis tool"),
+        ("GET  /api/test-paper-analyzer", "Test Paper Analyzer"),
         ("GET  /api/health", "Health check"),
     ]
     
     for method_path, description in endpoints:
-        print(f"   {method_path:<25} → {description}")
+        print(f"   {method_path:<30} → {description}")
     
     print("="*60 + "\n")
 
+# -------------------------
+# Main entry point
+# -------------------------
 if __name__ == '__main__':
     create_directories()
     print_startup_info()
