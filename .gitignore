@@ -29,3 +29,4 @@ build/
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 .env
+node_modules/
